@@ -1,36 +1,125 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BlockyKids 🧩
 
-## Getting Started
+Platform pembelajaran coding untuk siswa Sekolah Dasar dengan block programming dan game interaktif.
 
-First, run the development server:
+## 🚀 Fitur Utama
+
+- **6 Fase Pembelajaran** progresif dari dasar hingga lanjutan
+- **Mode Admin (Guru)** untuk membuat tantangan custom
+- **Semua Fase Terbuka** untuk memudahkan testing dan pembelajaran
+- **Upload Sprite Custom** di fase Animasi
+- **Dark Theme** dengan UI modern dan animatif
+
+## 📚 Fase Pembelajaran
+
+| # | Fase | Ikon | Deskripsi |
+|---|------|------|-----------|
+| 1 | Tutorial | 🎓 | Pengenalan dasar block programming |
+| 2 | Robot | 🤖 | Navigasi robot di grid |
+| 3 | Pixel Art | 🎨 | Menggambar dengan kode |
+| 4 | Animasi | 🎬 | Kontrol sprite dan animasi |
+| 5 | Math Quest | 🧮 | Matematika dengan variabel |
+| 6 | Musik | 🎵 | Komposisi musik dengan blok |
+
+## 🛠️ Teknologi
+
+- **Next.js 15** - React framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **Blockly** - Visual block programming
+
+## 🏃 Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000) di browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Struktur Project
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/                    # Next.js app router
+│   ├── globals.css         # Global styles
+│   ├── layout.tsx          # Root layout
+│   └── page.tsx            # Main page
+├── components/
+│   ├── phases/             # Komponen fase
+│   │   ├── TutorialPhase.tsx
+│   │   ├── RobotPhase.tsx
+│   │   ├── PixelArtPhase.tsx
+│   │   ├── AnimationPhase.tsx
+│   │   ├── MathPhase.tsx
+│   │   └── MusicPhase.tsx
+│   ├── admin/              # Komponen admin
+│   │   └── AdminEditor.tsx
+│   ├── ui/                 # UI components
+│   │   ├── Button.tsx
+│   │   └── Modal.tsx
+│   ├── Header.tsx
+│   ├── LevelList.tsx
+│   └── PhaseSelector.tsx
+├── data/                   # Data statis
+│   └── phases.ts
+├── hooks/                  # Custom React hooks
+│   └── index.ts
+├── lib/                    # Utilities
+│   ├── blockly.ts
+│   └── storage.ts
+└── types/                  # TypeScript types
+    └── index.ts
+```
 
-## Learn More
+## 👨‍🏫 Mode Admin (Guru)
 
-To learn more about Next.js, take a look at the following resources:
+1. Klik toggle **"Guru/Murid"** di header
+2. Setiap fase memiliki tombol **"Edit Tantangan"**
+3. Buat tantangan custom dengan form editor
+4. Tantangan tersimpan di localStorage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🎨 Customization
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Menambah Level Baru
 
-## Deploy on Vercel
+Edit file fase di `src/components/phases/[Fase]Phase.tsx`:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```typescript
+const DEFAULT_LEVELS = [
+  {
+    id: 1,
+    name: 'Level Baru',
+    difficulty: 'easy',
+    description: 'Deskripsi...',
+    hint: 'Petunjuk...',
+    // ...props spesifik fase
+  },
+];
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Upload Sprite (Fase Animasi)
+
+1. Masuk ke fase Animasi
+2. Klik **"Upload Sprite"** di sidebar
+3. Pilih gambar (PNG/JPG)
+4. Sprite tersimpan di localStorage
+
+## 📖 README per Fase
+
+- [Tutorial Phase](./docs/TUTORIAL.md)
+- [Robot Phase](./docs/ROBOT.md)
+- [Pixel Art Phase](./docs/PIXELART.md)
+- [Animation Phase](./docs/ANIMATION.md)
+- [Math Phase](./docs/MATH.md)
+- [Music Phase](./docs/MUSIC.md)
+
+## 📄 License
+
+MIT License - Bebas digunakan untuk pembelajaran.
