@@ -136,11 +136,29 @@ body {
   box-shadow: var(--shadow-glow);
 }
 
-/* Blockly Container Styles */
+/* Blockly Container Styles - Fixed containment & z-index */
 .blockly-wrapper {
   position: relative;
   height: 100%;
+  width: 100%;
   border-radius: 12px;
+  overflow: hidden;
+  /* Critical: contain the Blockly elements within this container */
+  isolation: isolate;
+  contain: layout;
+}
+
+/* Ensure Blockly injection div is properly contained */
+.blockly-wrapper>div {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.blockly-wrapper .injectionDiv {
+  border-radius: 0 0 12px 12px;
   overflow: hidden;
 }
 
@@ -148,17 +166,59 @@ body {
   fill: var(--bg-secondary) !important;
 }
 
+/* Toolbox - properly contained with lower z-index */
 .blockly-wrapper .blocklyToolboxDiv {
   background: var(--bg-card) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0 !important;
+  z-index: 10 !important;
+  /* Lower than modal z-index */
 }
 
+/* Toolbox flyout (the panel that opens when clicking a category) */
+.blockly-wrapper .blocklyFlyout {
+  z-index: 11 !important;
+}
+
+.blockly-wrapper .blocklyFlyoutBackground {
+  fill: #1a1a35 !important;
+  fill-opacity: 0.98 !important;
+}
+
+/* Category styling - minimal changes to preserve Blockly's native alignment */
 .blockly-wrapper .blocklyTreeRow:hover {
   background: rgba(108, 92, 231, 0.2) !important;
 }
 
 .blockly-wrapper .blocklyTreeSelected {
   background: var(--primary) !important;
+}
+
+/* Toolbox scrollbar */
+.blockly-wrapper .blocklyToolboxDiv::-webkit-scrollbar {
+  width: 4px;
+}
+
+.blockly-wrapper .blocklyToolboxDiv::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+/* Blockly dropdown menus and widgets */
+.blocklyWidgetDiv,
+.blocklyDropDownDiv {
+  z-index: 9000 !important;
+  /* High but below modal */
+}
+
+/* Trashcan */
+.blockly-wrapper .blocklyTrash {
+  z-index: 9 !important;
+}
+
+/* Zoom controls */
+.blockly-wrapper .blocklyZoom {
+  z-index: 9 !important;
 }
 
 /* Phase Layout */

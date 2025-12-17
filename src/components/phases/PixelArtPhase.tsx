@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
 import BlocklyWorkspace from '@/components/BlocklyWorkspace';
@@ -18,48 +18,89 @@ interface PixelArtPhaseProps {
 
 const GRID_SIZE = 8;
 
-const DEFAULT_LEVELS: PixelArtLevel[] = [
-    { id: 1, name: 'Garis Horizontal', difficulty: 'easy', description: 'Gambar garis dari kiri ke kanan (5 pixel)!', hint: 'Gunakan "Gambar" lalu "Geser Kanan" berulang', target: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]] },
-    { id: 2, name: 'Garis Vertikal', difficulty: 'easy', description: 'Gambar garis dari atas ke bawah!', hint: 'Gunakan "Gambar" dan "Geser Bawah"', target: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]] },
-    { id: 3, name: 'Huruf L', difficulty: 'medium', description: 'Gambar huruf L!', hint: 'Garis vertikal lalu garis horizontal', target: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3], [2, 3]] },
-    { id: 4, name: 'Kotak', difficulty: 'medium', description: 'Gambar kotak 3x3!', hint: 'Gunakan pengulangan untuk efisiensi', target: [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]] },
-    { id: 8, name: 'Seni Bebas', difficulty: 'free', description: 'Gambar apapun yang kamu mau!', hint: 'Ekspresikan kreativitasmu!', target: [] },
-];
+// Extended PixelArtLevel with allowedBlocks
+interface ExtendedPixelArtLevel extends PixelArtLevel {
+    allowedBlocks: string[];
+}
 
-const TOOLBOX = {
-    kind: 'categoryToolbox' as const,
-    contents: [
-        {
-            kind: 'category' as const,
-            name: '🎨 Gambar',
-            colour: '#E91E63',
-            contents: [
-                { kind: 'block' as const, type: 'pixel_draw' },
-                { kind: 'block' as const, type: 'pixel_set_color' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '➡️ Gerakan',
-            colour: '#4CAF50',
-            contents: [
-                { kind: 'block' as const, type: 'pixel_move_right' },
-                { kind: 'block' as const, type: 'pixel_move_down' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '🔁 Kontrol',
-            colour: '#FF9800',
-            contents: [
-                { kind: 'block' as const, type: 'repeat_times' },
-            ],
-        },
-    ],
+// Block definitions with categories
+const BLOCK_DEFINITIONS = {
+    pixel_set_color: { category: '🎨 Gambar', colour: '#E91E63' },
+    pixel_draw: { category: '🎨 Gambar', colour: '#E91E63' },
+    pixel_move_right: { category: '➡️ Gerakan', colour: '#4CAF50' },
+    pixel_move_down: { category: '➡️ Gerakan', colour: '#4CAF50' },
+    repeat_times: { category: '🔁 Kontrol', colour: '#FF9800' },
 };
 
+// Generate toolbox based on allowed blocks
+function generateToolbox(allowedBlocks: string[]) {
+    // Get unique blocks
+    const uniqueBlocks = [...new Set(allowedBlocks)];
+
+    // Group blocks by category
+    const categories: Record<string, { colour: string; blocks: string[] }> = {};
+
+    uniqueBlocks.forEach(blockType => {
+        const def = BLOCK_DEFINITIONS[blockType as keyof typeof BLOCK_DEFINITIONS];
+        if (def) {
+            if (!categories[def.category]) {
+                categories[def.category] = { colour: def.colour, blocks: [] };
+            }
+            categories[def.category].blocks.push(blockType);
+        }
+    });
+
+    return {
+        kind: 'categoryToolbox' as const,
+        contents: Object.entries(categories).map(([name, data]) => ({
+            kind: 'category' as const,
+            name,
+            colour: data.colour,
+            contents: data.blocks.map(type => ({ kind: 'block' as const, type })),
+        })),
+    };
+}
+
+const EXTENDED_LEVELS: ExtendedPixelArtLevel[] = [
+    {
+        id: 1, name: 'Garis Horizontal', difficulty: 'easy',
+        description: 'Gambar garis dari kiri ke kanan (5 pixel)!',
+        hint: 'Gunakan "Gambar" lalu "Geser Kanan" berulang',
+        target: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]],
+        allowedBlocks: ['pixel_draw', 'pixel_move_right'],
+    },
+    {
+        id: 2, name: 'Garis Vertikal', difficulty: 'easy',
+        description: 'Gambar garis dari atas ke bawah!',
+        hint: 'Gunakan "Gambar" dan "Geser Bawah"',
+        target: [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]],
+        allowedBlocks: ['pixel_draw', 'pixel_move_down'],
+    },
+    {
+        id: 3, name: 'Huruf L', difficulty: 'medium',
+        description: 'Gambar huruf L!',
+        hint: 'Garis vertikal lalu garis horizontal',
+        target: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3], [2, 3]],
+        allowedBlocks: ['pixel_draw', 'pixel_move_right', 'pixel_move_down'],
+    },
+    {
+        id: 4, name: 'Kotak', difficulty: 'medium',
+        description: 'Gambar kotak 3x3!',
+        hint: 'Gunakan pengulangan untuk efisiensi',
+        target: [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]],
+        allowedBlocks: ['pixel_draw', 'pixel_move_right', 'pixel_move_down', 'repeat_times'],
+    },
+    {
+        id: 8, name: 'Seni Bebas', difficulty: 'free',
+        description: 'Gambar apapun yang kamu mau!',
+        hint: 'Ekspresikan kreativitasmu!',
+        target: [],
+        allowedBlocks: ['pixel_set_color', 'pixel_draw', 'pixel_move_right', 'pixel_move_down', 'repeat_times'], // All blocks available
+    },
+];
+
 export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPhaseProps) {
-    const [levels] = useState(DEFAULT_LEVELS);
+    const [levels] = useState(EXTENDED_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [grid, setGrid] = useState<string[][]>(() =>
@@ -71,6 +112,11 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
     const drawnPixelsRef = useRef<Set<string>>(new Set());
 
     const level = levels[currentLevel];
+
+    // Generate dynamic toolbox based on current level's allowed blocks
+    const currentToolbox = useMemo(() => {
+        return generateToolbox(level.allowedBlocks);
+    }, [level.allowedBlocks]);
 
     const resetGrid = useCallback(() => {
         setGrid(Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill('')));
@@ -250,6 +296,10 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
                     <span>💡</span>
                     <span>{level.hint}</span>
                 </div>
+                <div className="flex items-center gap-2 mt-2 p-2 bg-[#00cec9]/10 border-l-4 border-[#00cec9] rounded-r-xl text-gray-400 text-sm">
+                    <span>🎨</span>
+                    <span>Tip: Pasang blok "Warna" sebelum "Gambar pixel" untuk mengubah warna!</span>
+                </div>
             </div>
 
             {/* Blockly */}
@@ -258,7 +308,7 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
                     <h3 className="font-semibold">🧩 Blok Kode</h3>
                 </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={TOOLBOX} onCodeChange={setCurrentCode} />
+                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
                 </div>
             </div>
         </div>

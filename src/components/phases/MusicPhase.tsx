@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
 import BlocklyWorkspace from '@/components/BlocklyWorkspace';
@@ -27,39 +27,87 @@ const NOTES = [
     { name: 'Do↑', note: 'C5', freq: 523.25 },
 ];
 
-const DEFAULT_LEVELS: MusicLevel[] = [
-    { id: 1, name: 'Nada Pertama', difficulty: 'easy', description: 'Mainkan nada "Do"!', hint: 'Gunakan blok "Mainkan Do"', goal: { type: 'notes', required: ['C4'], minNotes: 1 } },
-    { id: 2, name: 'Do Re Mi', difficulty: 'easy', description: 'Mainkan Do - Re - Mi berurutan!', hint: 'Susun 3 blok nada', goal: { type: 'sequence', required: ['C4', 'D4', 'E4'] } },
-    { id: 3, name: 'Tangga Nada', difficulty: 'medium', description: 'Mainkan semua nada dari Do sampai Do tinggi!', hint: 'Gunakan semua 8 nada', goal: { type: 'notes', minNotes: 8 } },
-    { id: 4, name: 'Repetisi', difficulty: 'medium', description: 'Mainkan Do 3 kali dengan pengulangan!', hint: 'Gunakan blok Ulangi', goal: { type: 'repeat', minNotes: 3 } },
-    { id: 8, name: 'Komposisi Bebas', difficulty: 'free', description: 'Buat musik sendiri! Minimal 5 nada.', hint: 'Berkreasi dengan bebas!', goal: { type: 'free', minNotes: 5 } },
-];
+// Extended MusicLevel with allowedBlocks
+interface ExtendedMusicLevel extends MusicLevel {
+    allowedBlocks: string[];
+}
 
-const TOOLBOX = {
-    kind: 'categoryToolbox' as const,
-    contents: [
-        {
-            kind: 'category' as const,
-            name: '🎵 Nada',
-            colour: '#E91E63',
-            contents: [
-                { kind: 'block' as const, type: 'music_play_note' },
-                { kind: 'block' as const, type: 'music_rest' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '🔁 Kontrol',
-            colour: '#FF9800',
-            contents: [
-                { kind: 'block' as const, type: 'repeat_times' },
-            ],
-        },
-    ],
+// Block definitions with categories
+const BLOCK_DEFINITIONS = {
+    music_play_note: { category: '🎵 Nada', colour: '#E91E63' },
+    music_rest: { category: '🎵 Nada', colour: '#E91E63' },
+    repeat_times: { category: '🔁 Kontrol', colour: '#FF9800' },
 };
 
+// Generate toolbox based on allowed blocks
+function generateToolbox(allowedBlocks: string[]) {
+    // Get unique blocks
+    const uniqueBlocks = [...new Set(allowedBlocks)];
+
+    // Group blocks by category
+    const categories: Record<string, { colour: string; blocks: string[] }> = {};
+
+    uniqueBlocks.forEach(blockType => {
+        const def = BLOCK_DEFINITIONS[blockType as keyof typeof BLOCK_DEFINITIONS];
+        if (def) {
+            if (!categories[def.category]) {
+                categories[def.category] = { colour: def.colour, blocks: [] };
+            }
+            categories[def.category].blocks.push(blockType);
+        }
+    });
+
+    return {
+        kind: 'categoryToolbox' as const,
+        contents: Object.entries(categories).map(([name, data]) => ({
+            kind: 'category' as const,
+            name,
+            colour: data.colour,
+            contents: data.blocks.map(type => ({ kind: 'block' as const, type })),
+        })),
+    };
+}
+
+const EXTENDED_LEVELS: ExtendedMusicLevel[] = [
+    {
+        id: 1, name: 'Nada Pertama', difficulty: 'easy',
+        description: 'Mainkan nada "Do"!',
+        hint: 'Gunakan blok "Mainkan Do"',
+        goal: { type: 'notes', required: ['C4'], minNotes: 1 },
+        allowedBlocks: ['music_play_note'],
+    },
+    {
+        id: 2, name: 'Do Re Mi', difficulty: 'easy',
+        description: 'Mainkan Do - Re - Mi berurutan!',
+        hint: 'Susun 3 blok nada',
+        goal: { type: 'sequence', required: ['C4', 'D4', 'E4'] },
+        allowedBlocks: ['music_play_note'],
+    },
+    {
+        id: 3, name: 'Tangga Nada', difficulty: 'medium',
+        description: 'Mainkan semua nada dari Do sampai Do tinggi!',
+        hint: 'Gunakan semua 8 nada',
+        goal: { type: 'notes', minNotes: 8 },
+        allowedBlocks: ['music_play_note'],
+    },
+    {
+        id: 4, name: 'Repetisi', difficulty: 'medium',
+        description: 'Mainkan Do 3 kali dengan pengulangan!',
+        hint: 'Gunakan blok Ulangi',
+        goal: { type: 'repeat', minNotes: 3 },
+        allowedBlocks: ['music_play_note', 'repeat_times'],
+    },
+    {
+        id: 8, name: 'Komposisi Bebas', difficulty: 'free',
+        description: 'Buat musik sendiri! Minimal 5 nada.',
+        hint: 'Berkreasi dengan bebas!',
+        goal: { type: 'free', minNotes: 5 },
+        allowedBlocks: ['music_play_note', 'music_rest', 'repeat_times'], // All blocks available
+    },
+];
+
 export default function MusicPhase({ onLevelComplete, showToast }: MusicPhaseProps) {
-    const [levels] = useState(DEFAULT_LEVELS);
+    const [levels] = useState(EXTENDED_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [playedNotes, setPlayedNotes] = useState<string[]>([]);
@@ -68,6 +116,11 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const level = levels[currentLevel];
+
+    // Generate dynamic toolbox based on current level's allowed blocks
+    const currentToolbox = useMemo(() => {
+        return generateToolbox(level.allowedBlocks);
+    }, [level.allowedBlocks]);
 
     // Initialize audio context
     useEffect(() => {
@@ -209,8 +262,8 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
                             key={i}
                             onClick={() => handlePianoClick(i)}
                             className={`w-12 h-28 rounded-b-lg flex flex-col items-center justify-end pb-2 transition-all shadow-md ${activeKey === i
-                                    ? 'bg-gradient-to-b from-[#6c5ce7] to-[#a29bfe] text-white translate-y-1'
-                                    : 'bg-gradient-to-b from-white to-gray-200 text-gray-800 hover:from-gray-100 hover:to-gray-300'
+                                ? 'bg-gradient-to-b from-[#6c5ce7] to-[#a29bfe] text-white translate-y-1'
+                                : 'bg-gradient-to-b from-white to-gray-200 text-gray-800 hover:from-gray-100 hover:to-gray-300'
                                 }`}
                         >
                             <span className="text-xs font-semibold">{note.name}</span>
@@ -259,7 +312,7 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
                     <h3 className="font-semibold">🧩 Blok Kode</h3>
                 </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={TOOLBOX} onCodeChange={setCurrentCode} />
+                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
                 </div>
             </div>
         </div>

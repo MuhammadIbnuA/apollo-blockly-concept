@@ -71,13 +71,18 @@ export default function BlocklyWorkspace({
 
     useEffect(() => {
         if (!isBlocklyLoaded || !containerRef.current || !Blockly) return;
-        if (workspaceRef.current) return; // Already initialized
+
+        // Dispose previous workspace if exists (to recreate with new toolbox)
+        if (workspaceRef.current) {
+            workspaceRef.current.dispose();
+            workspaceRef.current = null;
+        }
 
         try {
             // Define custom blocks if not defined
             defineCustomBlocks();
 
-            // Create workspace
+            // Create workspace with current toolbox
             workspaceRef.current = Blockly.inject(containerRef.current, {
                 toolbox,
                 theme: Blockly.Themes.Dark,
@@ -130,7 +135,9 @@ export default function BlocklyWorkspace({
     }
 
     return (
-        <div ref={containerRef} className="w-full h-full" style={{ minHeight: '500px' }} />
+        <div className="blockly-wrapper" style={{ minHeight: '500px' }}>
+            <div ref={containerRef} className="w-full h-full" />
+        </div>
     );
 }
 

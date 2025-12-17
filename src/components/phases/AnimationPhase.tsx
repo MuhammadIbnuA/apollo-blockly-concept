@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
 import BlocklyWorkspace from '@/components/BlocklyWorkspace';
@@ -16,62 +16,115 @@ interface AnimationPhaseProps {
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-const DEFAULT_LEVELS: AnimationLevel[] = [
-    { id: 1, name: 'Kucing Berjalan', difficulty: 'easy', description: 'Buat kucing berjalan ke kanan!', hint: 'Gunakan blok "Gerak Kanan" beberapa kali', sprites: [{ id: 'cat', emoji: '🐱', x: 50, y: 150 }], goal: { type: 'position', x: 400, tolerance: 50 } },
-    { id: 2, name: 'Burung Terbang', difficulty: 'easy', description: 'Buat burung terbang ke atas!', hint: 'Gunakan blok "Gerak Atas"', sprites: [{ id: 'bird', emoji: '🐦', x: 250, y: 280 }], goal: { type: 'position', y: 50, tolerance: 50 } },
-    { id: 3, name: 'Lompat!', difficulty: 'medium', description: 'Buat kelinci melompat!', hint: 'Gunakan blok "Lompat"', sprites: [{ id: 'rabbit', emoji: '🐰', x: 150, y: 200 }], goal: { type: 'action', action: 'jump' } },
-    { id: 4, name: 'Zig Zag', difficulty: 'medium', description: 'Buat lebah terbang zig-zag ke kanan!', hint: 'Kombinasikan gerak kanan dengan atas/bawah', sprites: [{ id: 'bee', emoji: '🐝', x: 50, y: 150 }], goal: { type: 'position', x: 400, tolerance: 100 } },
-    { id: 5, name: 'Berputar', difficulty: 'medium', description: 'Buat bintang berputar 360 derajat!', hint: 'Gunakan blok "Putar" dengan 360', sprites: [{ id: 'star', emoji: '⭐', x: 250, y: 150 }], goal: { type: 'rotation', degrees: 360 } },
-    { id: 6, name: 'Dialog', difficulty: 'hard', description: 'Buat kucing menyapa!', hint: 'Gunakan blok "Katakan"', sprites: [{ id: 'cat', emoji: '🐱', x: 250, y: 150 }], goal: { type: 'speech' } },
-    { id: 9, name: '🎨 Sandbox', difficulty: 'free', description: 'Mode bebas! Berkreasi sesuka hati!', hint: 'Ekspresikan kreativitasmu!', sprites: [{ id: 'cat', emoji: '🐱', x: 100, y: 150 }, { id: 'dog', emoji: '🐕', x: 400, y: 150 }], goal: { type: 'free' } },
-];
+// Extended AnimationLevel with allowedBlocks
+interface ExtendedAnimationLevel extends AnimationLevel {
+    allowedBlocks: string[];
+}
 
-const TOOLBOX = {
-    kind: 'categoryToolbox' as const,
-    contents: [
-        {
-            kind: 'category' as const,
-            name: '🏃 Gerakan',
-            colour: '#4CAF50',
-            contents: [
-                { kind: 'block' as const, type: 'anim_move_right' },
-                { kind: 'block' as const, type: 'anim_move_left' },
-                { kind: 'block' as const, type: 'anim_move_up' },
-                { kind: 'block' as const, type: 'anim_move_down' },
-                { kind: 'block' as const, type: 'anim_jump' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '🎨 Tampilan',
-            colour: '#9C27B0',
-            contents: [
-                { kind: 'block' as const, type: 'anim_rotate' },
-                { kind: 'block' as const, type: 'anim_scale' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '💬 Komunikasi',
-            colour: '#2196F3',
-            contents: [
-                { kind: 'block' as const, type: 'anim_say' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '🔁 Kontrol',
-            colour: '#FF9800',
-            contents: [
-                { kind: 'block' as const, type: 'repeat_times' },
-                { kind: 'block' as const, type: 'wait' },
-            ],
-        },
-    ],
+// Block definitions with categories
+const BLOCK_DEFINITIONS = {
+    anim_move_right: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    anim_move_left: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    anim_move_up: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    anim_move_down: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    anim_jump: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    anim_rotate: { category: '🎨 Tampilan', colour: '#9C27B0' },
+    anim_scale: { category: '🎨 Tampilan', colour: '#9C27B0' },
+    anim_say: { category: '💬 Komunikasi', colour: '#2196F3' },
+    repeat_times: { category: '🔁 Kontrol', colour: '#FF9800' },
+    wait: { category: '🔁 Kontrol', colour: '#FF9800' },
 };
 
+// Generate toolbox based on allowed blocks
+function generateToolbox(allowedBlocks: string[]) {
+    // Get unique blocks
+    const uniqueBlocks = [...new Set(allowedBlocks)];
+
+    // Group blocks by category
+    const categories: Record<string, { colour: string; blocks: string[] }> = {};
+
+    uniqueBlocks.forEach(blockType => {
+        const def = BLOCK_DEFINITIONS[blockType as keyof typeof BLOCK_DEFINITIONS];
+        if (def) {
+            if (!categories[def.category]) {
+                categories[def.category] = { colour: def.colour, blocks: [] };
+            }
+            categories[def.category].blocks.push(blockType);
+        }
+    });
+
+    return {
+        kind: 'categoryToolbox' as const,
+        contents: Object.entries(categories).map(([name, data]) => ({
+            kind: 'category' as const,
+            name,
+            colour: data.colour,
+            contents: data.blocks.map(type => ({ kind: 'block' as const, type })),
+        })),
+    };
+}
+
+const EXTENDED_LEVELS: ExtendedAnimationLevel[] = [
+    {
+        id: 1, name: 'Kucing Berjalan', difficulty: 'easy',
+        description: 'Buat kucing berjalan ke kanan!',
+        hint: 'Gunakan blok "Gerak Kanan" beberapa kali',
+        sprites: [{ id: 'cat', emoji: '🐱', x: 50, y: 150 }],
+        goal: { type: 'position', x: 400, tolerance: 50 },
+        allowedBlocks: ['anim_move_right'],
+    },
+    {
+        id: 2, name: 'Burung Terbang', difficulty: 'easy',
+        description: 'Buat burung terbang ke atas!',
+        hint: 'Gunakan blok "Gerak Atas"',
+        sprites: [{ id: 'bird', emoji: '🐦', x: 250, y: 280 }],
+        goal: { type: 'position', y: 50, tolerance: 50 },
+        allowedBlocks: ['anim_move_up'],
+    },
+    {
+        id: 3, name: 'Lompat!', difficulty: 'medium',
+        description: 'Buat kelinci melompat!',
+        hint: 'Gunakan blok "Lompat"',
+        sprites: [{ id: 'rabbit', emoji: '🐰', x: 150, y: 200 }],
+        goal: { type: 'action', action: 'jump' },
+        allowedBlocks: ['anim_jump'],
+    },
+    {
+        id: 4, name: 'Zig Zag', difficulty: 'medium',
+        description: 'Buat lebah terbang zig-zag ke kanan!',
+        hint: 'Kombinasikan gerak kanan dengan atas/bawah',
+        sprites: [{ id: 'bee', emoji: '🐝', x: 50, y: 150 }],
+        goal: { type: 'position', x: 400, tolerance: 100 },
+        allowedBlocks: ['anim_move_right', 'anim_move_up', 'anim_move_down'],
+    },
+    {
+        id: 5, name: 'Berputar', difficulty: 'medium',
+        description: 'Buat bintang berputar 360 derajat!',
+        hint: 'Gunakan blok "Putar" dengan 360',
+        sprites: [{ id: 'star', emoji: '⭐', x: 250, y: 150 }],
+        goal: { type: 'rotation', degrees: 360 },
+        allowedBlocks: ['anim_rotate'],
+    },
+    {
+        id: 6, name: 'Dialog', difficulty: 'hard',
+        description: 'Buat kucing menyapa!',
+        hint: 'Gunakan blok "Katakan"',
+        sprites: [{ id: 'cat', emoji: '🐱', x: 250, y: 150 }],
+        goal: { type: 'speech' },
+        allowedBlocks: ['anim_say'],
+    },
+    {
+        id: 9, name: '🎨 Sandbox', difficulty: 'free',
+        description: 'Mode bebas! Berkreasi sesuka hati!',
+        hint: 'Ekspresikan kreativitasmu!',
+        sprites: [{ id: 'cat', emoji: '🐱', x: 100, y: 150 }, { id: 'dog', emoji: '🐕', x: 400, y: 150 }],
+        goal: { type: 'free' },
+        allowedBlocks: ['anim_move_right', 'anim_move_left', 'anim_move_up', 'anim_move_down', 'anim_jump', 'anim_rotate', 'anim_scale', 'anim_say', 'repeat_times', 'wait'], // All blocks available
+    },
+];
+
 export default function AnimationPhase({ onLevelComplete, showToast }: AnimationPhaseProps) {
-    const [levels] = useState(DEFAULT_LEVELS);
+    const [levels] = useState(EXTENDED_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [sprites, setSprites] = useState<Sprite[]>([]);
@@ -79,6 +132,11 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
     const actionLogRef = useRef<string[]>([]);
 
     const level = levels[currentLevel];
+
+    // Generate dynamic toolbox based on current level's allowed blocks
+    const currentToolbox = useMemo(() => {
+        return generateToolbox(level.allowedBlocks);
+    }, [level.allowedBlocks]);
 
     // Initialize sprites when level changes
     const loadLevel = useCallback((idx: number) => {
@@ -296,7 +354,7 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
                     <h3 className="font-semibold">🧩 Blok Kode</h3>
                 </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={TOOLBOX} onCodeChange={setCurrentCode} />
+                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
                 </div>
             </div>
         </div>

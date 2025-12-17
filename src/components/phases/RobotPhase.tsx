@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
 import BlocklyWorkspace from '@/components/BlocklyWorkspace';
@@ -68,41 +68,99 @@ const DEFAULT_LEVELS: RobotLevel[] = [
     },
 ];
 
-const TOOLBOX = {
-    kind: 'categoryToolbox' as const,
-    contents: [
-        {
-            kind: 'category' as const,
-            name: '🏃 Gerakan',
-            colour: '#4CAF50',
-            contents: [
-                { kind: 'block' as const, type: 'move_forward' },
-                { kind: 'block' as const, type: 'turn_left' },
-                { kind: 'block' as const, type: 'turn_right' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '🔁 Kontrol',
-            colour: '#9C27B0',
-            contents: [
-                { kind: 'block' as const, type: 'repeat_times' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '⭐ Aksi',
-            colour: '#FF9800',
-            contents: [
-                { kind: 'block' as const, type: 'collect_star' },
-                { kind: 'block' as const, type: 'wait' },
-            ],
-        },
-    ],
+// Extended RobotLevel with allowedBlocks
+interface ExtendedRobotLevel extends RobotLevel {
+    allowedBlocks: string[];
+}
+
+// Block definitions with categories
+const BLOCK_DEFINITIONS = {
+    move_forward: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    turn_left: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    turn_right: { category: '🏃 Gerakan', colour: '#4CAF50' },
+    repeat_times: { category: '🔁 Kontrol', colour: '#9C27B0' },
+    collect_star: { category: '⭐ Aksi', colour: '#FF9800' },
+    wait: { category: '⭐ Aksi', colour: '#FF9800' },
 };
 
+// Generate toolbox based on allowed blocks
+function generateToolbox(allowedBlocks: string[]) {
+    // Get unique blocks
+    const uniqueBlocks = [...new Set(allowedBlocks)];
+
+    // Group blocks by category
+    const categories: Record<string, { colour: string; blocks: string[] }> = {};
+
+    uniqueBlocks.forEach(blockType => {
+        const def = BLOCK_DEFINITIONS[blockType as keyof typeof BLOCK_DEFINITIONS];
+        if (def) {
+            if (!categories[def.category]) {
+                categories[def.category] = { colour: def.colour, blocks: [] };
+            }
+            categories[def.category].blocks.push(blockType);
+        }
+    });
+
+    return {
+        kind: 'categoryToolbox' as const,
+        contents: Object.entries(categories).map(([name, data]) => ({
+            kind: 'category' as const,
+            name,
+            colour: data.colour,
+            contents: data.blocks.map(type => ({ kind: 'block' as const, type })),
+        })),
+    };
+}
+
+const EXTENDED_LEVELS: ExtendedRobotLevel[] = [
+    {
+        id: 1, name: 'Langkah Pertama', difficulty: 'easy',
+        description: 'Buat robot bergerak ke tujuan!',
+        hint: 'Gunakan blok "Maju" 4 kali',
+        width: 5, height: 3,
+        grid: Array(3).fill(null).map(() => Array(5).fill({ type: 'empty' })),
+        robot: { x: 0, y: 1, direction: 'east' },
+        goal: { x: 4, y: 1 },
+        stars: [],
+        allowedBlocks: ['move_forward'],
+    },
+    {
+        id: 2, name: 'Belok Kiri', difficulty: 'easy',
+        description: 'Robot perlu berbelok untuk mencapai tujuan!',
+        hint: 'Maju, belok kiri, lalu maju lagi',
+        width: 4, height: 4,
+        grid: Array(4).fill(null).map(() => Array(4).fill({ type: 'empty' })),
+        robot: { x: 0, y: 3, direction: 'east' },
+        goal: { x: 3, y: 0 },
+        stars: [],
+        allowedBlocks: ['move_forward', 'turn_left'],
+    },
+    {
+        id: 3, name: 'Kumpulkan Bintang', difficulty: 'medium',
+        description: 'Kumpulkan semua bintang lalu ke tujuan!',
+        hint: 'Gunakan "Maju" dan "Ambil Bintang"',
+        width: 5, height: 3,
+        grid: Array(3).fill(null).map(() => Array(5).fill({ type: 'empty' })),
+        robot: { x: 0, y: 1, direction: 'east' },
+        goal: { x: 4, y: 1 },
+        stars: [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 }],
+        allowedBlocks: ['move_forward', 'collect_star'],
+    },
+    {
+        id: 4, name: 'Pengulangan', difficulty: 'medium',
+        description: 'Gunakan pengulangan untuk efisiensi!',
+        hint: 'Ulangi "Maju" 4 kali',
+        width: 5, height: 3,
+        grid: Array(3).fill(null).map(() => Array(5).fill({ type: 'empty' })),
+        robot: { x: 0, y: 1, direction: 'east' },
+        goal: { x: 4, y: 1 },
+        stars: [],
+        allowedBlocks: ['move_forward', 'repeat_times'],
+    },
+];
+
 export default function RobotPhase({ onLevelComplete, showToast }: RobotPhaseProps) {
-    const [levels] = useState(DEFAULT_LEVELS);
+    const [levels] = useState(EXTENDED_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [robotPos, setRobotPos] = useState({ x: 0, y: 1 });
@@ -111,6 +169,11 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
     const [isRunning, setIsRunning] = useState(false);
 
     const level = levels[currentLevel];
+
+    // Generate dynamic toolbox based on current level's allowed blocks
+    const currentToolbox = useMemo(() => {
+        return generateToolbox(level.allowedBlocks);
+    }, [level.allowedBlocks]);
 
     const resetRobot = useCallback(() => {
         const lvl = levels[currentLevel];
@@ -279,7 +342,7 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
                     <h3 className="font-semibold">🧩 Blok Kode</h3>
                 </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={TOOLBOX} onCodeChange={setCurrentCode} />
+                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
                 </div>
             </div>
         </div>

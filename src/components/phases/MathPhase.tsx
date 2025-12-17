@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
 import BlocklyWorkspace from '@/components/BlocklyWorkspace';
@@ -16,56 +16,108 @@ interface MathPhaseProps {
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-const DEFAULT_LEVELS: MathLevel[] = [
-    { id: 1, name: 'Penjumlahan', difficulty: 'easy', description: 'Hitung 5 + 3 dan tampilkan hasilnya!', hint: 'Gunakan blok penjumlahan dan tampilkan', expectedOutput: ['8'] },
-    { id: 2, name: 'Pengurangan', difficulty: 'easy', description: 'Hitung 10 - 4!', hint: 'Gunakan blok pengurangan', expectedOutput: ['6'] },
-    { id: 3, name: 'Perkalian', difficulty: 'medium', description: 'Hitung 6 × 7!', hint: 'Gunakan blok perkalian', expectedOutput: ['42'] },
-    { id: 4, name: 'Variabel', difficulty: 'medium', description: 'Buat variabel "x" dengan nilai 10 dan tampilkan!', hint: 'Set variabel lalu tampilkan', expectedOutput: ['10'] },
-    { id: 5, name: 'Hitung Keliling', difficulty: 'hard', description: 'Keliling persegi dengan sisi 5 adalah?', hint: 'Keliling = 4 × sisi', expectedOutput: ['20'] },
-    { id: 10, name: 'Kalkulator Bebas', difficulty: 'free', description: 'Buat perhitunganmu sendiri!', hint: 'Gunakan semua blok matematika', expectedOutput: [] },
-];
+// Extended MathLevel with allowedBlocks
+interface ExtendedMathLevel extends MathLevel {
+    allowedBlocks: string[];
+}
 
-const TOOLBOX = {
-    kind: 'categoryToolbox' as const,
-    contents: [
-        {
-            kind: 'category' as const,
-            name: '🔢 Angka',
-            colour: '#4ECDC4',
-            contents: [
-                { kind: 'block' as const, type: 'math_number' },
-                { kind: 'block' as const, type: 'math_add' },
-                { kind: 'block' as const, type: 'math_subtract' },
-                { kind: 'block' as const, type: 'math_multiply' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '📦 Variabel',
-            colour: '#FF6B6B',
-            contents: [
-                { kind: 'block' as const, type: 'math_set_var' },
-            ],
-        },
-        {
-            kind: 'category' as const,
-            name: '📤 Output',
-            colour: '#45B7D1',
-            contents: [
-                { kind: 'block' as const, type: 'math_print' },
-            ],
-        },
-    ],
+// Block definitions with categories
+const BLOCK_DEFINITIONS = {
+    math_number: { category: '🔢 Angka', colour: '#4ECDC4' },
+    math_add: { category: '🔢 Angka', colour: '#4ECDC4' },
+    math_subtract: { category: '🔢 Angka', colour: '#4ECDC4' },
+    math_multiply: { category: '🔢 Angka', colour: '#4ECDC4' },
+    math_set_var: { category: '📦 Variabel', colour: '#FF6B6B' },
+    math_print: { category: '📤 Output', colour: '#45B7D1' },
 };
 
+// Generate toolbox based on allowed blocks
+function generateToolbox(allowedBlocks: string[]) {
+    // Get unique blocks
+    const uniqueBlocks = [...new Set(allowedBlocks)];
+
+    // Group blocks by category
+    const categories: Record<string, { colour: string; blocks: string[] }> = {};
+
+    uniqueBlocks.forEach(blockType => {
+        const def = BLOCK_DEFINITIONS[blockType as keyof typeof BLOCK_DEFINITIONS];
+        if (def) {
+            if (!categories[def.category]) {
+                categories[def.category] = { colour: def.colour, blocks: [] };
+            }
+            categories[def.category].blocks.push(blockType);
+        }
+    });
+
+    return {
+        kind: 'categoryToolbox' as const,
+        contents: Object.entries(categories).map(([name, data]) => ({
+            kind: 'category' as const,
+            name,
+            colour: data.colour,
+            contents: data.blocks.map(type => ({ kind: 'block' as const, type })),
+        })),
+    };
+}
+
+const EXTENDED_LEVELS: ExtendedMathLevel[] = [
+    {
+        id: 1, name: 'Penjumlahan', difficulty: 'easy',
+        description: 'Hitung 5 + 3 dan tampilkan hasilnya!',
+        hint: 'Gunakan blok penjumlahan dan tampilkan',
+        expectedOutput: ['8'],
+        allowedBlocks: ['math_number', 'math_add', 'math_print'],
+    },
+    {
+        id: 2, name: 'Pengurangan', difficulty: 'easy',
+        description: 'Hitung 10 - 4!',
+        hint: 'Gunakan blok pengurangan',
+        expectedOutput: ['6'],
+        allowedBlocks: ['math_number', 'math_subtract', 'math_print'],
+    },
+    {
+        id: 3, name: 'Perkalian', difficulty: 'medium',
+        description: 'Hitung 6 × 7!',
+        hint: 'Gunakan blok perkalian',
+        expectedOutput: ['42'],
+        allowedBlocks: ['math_number', 'math_multiply', 'math_print'],
+    },
+    {
+        id: 4, name: 'Variabel', difficulty: 'medium',
+        description: 'Buat variabel "x" dengan nilai 10 dan tampilkan!',
+        hint: 'Set variabel lalu tampilkan',
+        expectedOutput: ['10'],
+        allowedBlocks: ['math_number', 'math_set_var'],
+    },
+    {
+        id: 5, name: 'Hitung Keliling', difficulty: 'hard',
+        description: 'Keliling persegi dengan sisi 5 adalah?',
+        hint: 'Keliling = 4 × sisi',
+        expectedOutput: ['20'],
+        allowedBlocks: ['math_number', 'math_multiply', 'math_print'],
+    },
+    {
+        id: 10, name: 'Kalkulator Bebas', difficulty: 'free',
+        description: 'Buat perhitunganmu sendiri!',
+        hint: 'Gunakan semua blok matematika',
+        expectedOutput: [],
+        allowedBlocks: ['math_number', 'math_add', 'math_subtract', 'math_multiply', 'math_set_var', 'math_print'], // All blocks available
+    },
+];
+
 export default function MathPhase({ onLevelComplete, showToast }: MathPhaseProps) {
-    const [levels] = useState(DEFAULT_LEVELS);
+    const [levels] = useState(EXTENDED_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [output, setOutput] = useState<string[]>([]);
     const [variables, setVariables] = useState<Record<string, number>>({});
 
     const level = levels[currentLevel];
+
+    // Generate dynamic toolbox based on current level's allowed blocks
+    const currentToolbox = useMemo(() => {
+        return generateToolbox(level.allowedBlocks);
+    }, [level.allowedBlocks]);
 
     const handleRun = useCallback(async () => {
         setOutput([]);
@@ -192,7 +244,7 @@ export default function MathPhase({ onLevelComplete, showToast }: MathPhaseProps
                     <h3 className="font-semibold">🧩 Blok Kode</h3>
                 </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={TOOLBOX} onCodeChange={setCurrentCode} />
+                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
                 </div>
             </div>
         </div>
