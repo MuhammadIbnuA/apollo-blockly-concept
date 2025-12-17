@@ -87,39 +87,41 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
 
         await new Promise(r => setTimeout(r, 100));
 
+        // Use a mutable grid to collect all drawing operations
+        const tempGrid: string[][] = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(''));
         let cx = 0, cy = 0;
         let color = '#ff0000';
 
         const pixelDraw = () => {
-            setGrid(prev => {
-                const newGrid = prev.map(row => [...row]);
-                if (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
-                    newGrid[cy][cx] = color;
-                    drawnPixelsRef.current.add(`${cx},${cy}`);
-                }
-                return newGrid;
-            });
+            if (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
+                tempGrid[cy][cx] = color;
+                drawnPixelsRef.current.add(`${cx},${cy}`);
+            }
         };
 
         const pixelMoveRight = () => {
             cx = Math.min(cx + 1, GRID_SIZE - 1);
-            setCursorPos({ x: cx, y: cy });
         };
 
         const pixelMoveDown = () => {
             cy = Math.min(cy + 1, GRID_SIZE - 1);
-            setCursorPos({ x: cx, y: cy });
         };
 
         const pixelSetColor = (c: string) => {
             color = c;
-            setCurrentColor(c);
         };
 
         try {
             // eslint-disable-next-line no-new-func
             const fn = new Function('pixelDraw', 'pixelMoveRight', 'pixelMoveDown', 'pixelSetColor', currentCode);
             fn(pixelDraw, pixelMoveRight, pixelMoveDown, pixelSetColor);
+
+            // Apply all drawing operations to React state at once
+            // Must create new array references for React to detect changes
+            setGrid(tempGrid.map(row => [...row]));
+            setCursorPos({ x: cx, y: cy });
+            setCurrentColor(color);
+
             showToast('Gambar selesai!', 'success');
         } catch (e) {
             console.error('Error:', e);
@@ -228,7 +230,15 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
                     </div>
                 </div>
 
-                <div className="flex gap-3 justify-center mt-4">
+                <div className="flex gap-3 justify-center items-center mt-4">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-[#1a1a35] rounded-lg">
+                        <span className="text-sm text-gray-400">Warna:</span>
+                        <div
+                            className="w-6 h-6 rounded-md border-2 border-white/30"
+                            style={{ backgroundColor: currentColor }}
+                            title={`Warna saat ini: ${currentColor}`}
+                        />
+                    </div>
                     <Button variant="success" onClick={handleRun} disabled={isRunning} icon="▶️">
                         {isRunning ? 'Menggambar...' : 'Jalankan'}
                     </Button>

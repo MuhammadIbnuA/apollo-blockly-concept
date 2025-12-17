@@ -23,11 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
-      <head>
-        <script src="https://unpkg.com/blockly/blockly.min.js" defer />
-      </head>
-      <body className={outfit.variable}>
+    <html lang="id" suppressHydrationWarning>
+      <body className={outfit.variable} suppressHydrationWarning>
         {children}
 
         {/* Toast Container */}

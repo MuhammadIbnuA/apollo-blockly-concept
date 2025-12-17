@@ -1,17 +1,16 @@
 /**
  * BlockyKids - Blockly Workspace Component
- * Client-side only Blockly integration
+ * Client-side only Blockly integration using npm package
  */
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 
-declare global {
-    interface Window {
-        Blockly: any;
-    }
-}
+// Blockly and JavaScript generator - will be dynamically imported
+let Blockly: any = null;
+let javascriptGenerator: any = null;
+let Order: any = null;
 
 export interface BlocklyToolboxCategory {
     kind: 'category';
@@ -39,25 +38,28 @@ export default function BlocklyWorkspace({
     const [isBlocklyLoaded, setIsBlocklyLoaded] = useState(false);
 
     useEffect(() => {
-        // Check if Blockly is loaded
-        const checkBlockly = () => {
-            if (window.Blockly) {
+        // Dynamically import Blockly (client-side only)
+        const loadBlockly = async () => {
+            if (Blockly && javascriptGenerator) {
                 setIsBlocklyLoaded(true);
-                return true;
+                return;
             }
-            return false;
+
+            try {
+                const blocklyModule = await import('blockly');
+                const javascriptModule = await import('blockly/javascript');
+
+                Blockly = blocklyModule.default || blocklyModule;
+                javascriptGenerator = javascriptModule.javascriptGenerator;
+                Order = javascriptModule.Order;
+
+                setIsBlocklyLoaded(true);
+            } catch (error) {
+                console.error('Failed to load Blockly:', error);
+            }
         };
 
-        if (!checkBlockly()) {
-            // Load Blockly script if not loaded
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/blockly/blockly.min.js';
-            script.async = true;
-            script.onload = () => {
-                setTimeout(() => setIsBlocklyLoaded(true), 100);
-            };
-            document.head.appendChild(script);
-        }
+        loadBlockly();
 
         return () => {
             if (workspaceRef.current) {
@@ -68,7 +70,7 @@ export default function BlocklyWorkspace({
     }, []);
 
     useEffect(() => {
-        if (!isBlocklyLoaded || !containerRef.current || !window.Blockly) return;
+        if (!isBlocklyLoaded || !containerRef.current || !Blockly) return;
         if (workspaceRef.current) return; // Already initialized
 
         try {
@@ -76,9 +78,9 @@ export default function BlocklyWorkspace({
             defineCustomBlocks();
 
             // Create workspace
-            workspaceRef.current = window.Blockly.inject(containerRef.current, {
+            workspaceRef.current = Blockly.inject(containerRef.current, {
                 toolbox,
-                theme: window.Blockly.Themes.Dark,
+                theme: Blockly.Themes.Dark,
                 grid: {
                     spacing: 20,
                     length: 3,
@@ -106,8 +108,8 @@ export default function BlocklyWorkspace({
 
             // Listen for changes
             workspaceRef.current.addChangeListener(() => {
-                if (onCodeChange && window.Blockly.JavaScript) {
-                    const code = window.Blockly.JavaScript.workspaceToCode(workspaceRef.current);
+                if (onCodeChange && javascriptGenerator) {
+                    const code = javascriptGenerator.workspaceToCode(workspaceRef.current);
                     onCodeChange(code);
                 }
             });
@@ -132,12 +134,14 @@ export default function BlocklyWorkspace({
     );
 }
 
+// Track if custom blocks are defined
+let blocksDefinedFlag = false;
+let generatorsDefinedFlag = false;
+
 // Define custom blocks
 function defineCustomBlocks() {
-    if (!window.Blockly || window.Blockly.__blockskyDefined) return;
-    window.Blockly.__blockskyDefined = true;
-
-    const Blockly = window.Blockly;
+    if (!Blockly || blocksDefinedFlag) return;
+    blocksDefinedFlag = true;
 
     // ===== MOVEMENT BLOCKS =====
     Blockly.Blocks['move_forward'] = {
@@ -329,7 +333,18 @@ function defineCustomBlocks() {
         init: function () {
             this.appendDummyInput()
                 .appendField('🎨 Warna')
-                .appendField(new Blockly.FieldColour('#ff0000'), 'COLOR');
+                .appendField(new Blockly.FieldDropdown([
+                    ['🔴 Merah', '#ff0000'],
+                    ['🟠 Oranye', '#ff8800'],
+                    ['🟡 Kuning', '#ffff00'],
+                    ['🟢 Hijau', '#00ff00'],
+                    ['🔵 Biru', '#0088ff'],
+                    ['🟣 Ungu', '#8800ff'],
+                    ['⚫ Hitam', '#000000'],
+                    ['⚪ Putih', '#ffffff'],
+                    ['🟤 Coklat', '#8B4513'],
+                    ['💗 Pink', '#ff69b4']
+                ]), 'COLOR');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(330);
@@ -427,61 +442,68 @@ function defineCustomBlocks() {
         }
     };
 
-    // ===== CODE GENERATORS =====
-    if (Blockly.JavaScript) {
-        Blockly.JavaScript.forBlock['move_forward'] = () => 'await moveForward();\n';
-        Blockly.JavaScript.forBlock['turn_left'] = () => 'await turnLeft();\n';
-        Blockly.JavaScript.forBlock['turn_right'] = () => 'await turnRight();\n';
-        Blockly.JavaScript.forBlock['collect_star'] = () => 'await collectStar();\n';
-        Blockly.JavaScript.forBlock['wait'] = (block: any) => `await wait(${block.getFieldValue('SECONDS')});\n`;
-
-        Blockly.JavaScript.forBlock['repeat_times'] = (block: any) => {
-            const times = block.getFieldValue('TIMES');
-            const branch = Blockly.JavaScript.statementToCode(block, 'DO');
-            return `for (let i = 0; i < ${times}; i++) {\n${branch}}\n`;
-        };
-
-        Blockly.JavaScript.forBlock['anim_move_right'] = (block: any) => `await animMoveRight(${block.getFieldValue('PIXELS')});\n`;
-        Blockly.JavaScript.forBlock['anim_move_left'] = (block: any) => `await animMoveLeft(${block.getFieldValue('PIXELS')});\n`;
-        Blockly.JavaScript.forBlock['anim_move_up'] = (block: any) => `await animMoveUp(${block.getFieldValue('PIXELS')});\n`;
-        Blockly.JavaScript.forBlock['anim_move_down'] = (block: any) => `await animMoveDown(${block.getFieldValue('PIXELS')});\n`;
-        Blockly.JavaScript.forBlock['anim_jump'] = () => `await animJump();\n`;
-        Blockly.JavaScript.forBlock['anim_rotate'] = (block: any) => `await animRotate(${block.getFieldValue('DEGREES')});\n`;
-        Blockly.JavaScript.forBlock['anim_scale'] = (block: any) => `await animScale(${block.getFieldValue('PERCENT')});\n`;
-        Blockly.JavaScript.forBlock['anim_say'] = (block: any) => `await animSay("${block.getFieldValue('TEXT')}");\n`;
-
-        Blockly.JavaScript.forBlock['pixel_draw'] = () => 'pixelDraw();\n';
-        Blockly.JavaScript.forBlock['pixel_move_right'] = () => 'pixelMoveRight();\n';
-        Blockly.JavaScript.forBlock['pixel_move_down'] = () => 'pixelMoveDown();\n';
-        Blockly.JavaScript.forBlock['pixel_set_color'] = (block: any) => `pixelSetColor("${block.getFieldValue('COLOR')}");\n`;
-
-        Blockly.JavaScript.forBlock['math_number'] = (block: any) => [block.getFieldValue('NUM'), Blockly.JavaScript.ORDER_ATOMIC];
-        Blockly.JavaScript.forBlock['math_print'] = (block: any) => {
-            const value = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_NONE) || '0';
-            return `mathPrint(${value});\n`;
-        };
-        Blockly.JavaScript.forBlock['math_add'] = (block: any) => {
-            const a = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_ADDITION) || '0';
-            const b = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_ADDITION) || '0';
-            return [`(${a} + ${b})`, Blockly.JavaScript.ORDER_ADDITION];
-        };
-        Blockly.JavaScript.forBlock['math_subtract'] = (block: any) => {
-            const a = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_SUBTRACTION) || '0';
-            const b = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_SUBTRACTION) || '0';
-            return [`(${a} - ${b})`, Blockly.JavaScript.ORDER_SUBTRACTION];
-        };
-        Blockly.JavaScript.forBlock['math_multiply'] = (block: any) => {
-            const a = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_MULTIPLICATION) || '0';
-            const b = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_MULTIPLICATION) || '0';
-            return [`(${a} * ${b})`, Blockly.JavaScript.ORDER_MULTIPLICATION];
-        };
-        Blockly.JavaScript.forBlock['math_set_var'] = (block: any) => {
-            const varName = block.getFieldValue('VAR');
-            const value = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_ASSIGNMENT) || '0';
-            return `mathSetVar("${varName}", ${value});\n`;
-        };
-
-        Blockly.JavaScript.forBlock['music_play_note'] = (block: any) => `await musicPlayNote("${block.getFieldValue('NOTE')}");\n`;
-        Blockly.JavaScript.forBlock['music_rest'] = (block: any) => `await musicRest(${block.getFieldValue('BEATS')});\n`;
-    }
+    // Register code generators
+    registerCodeGenerators();
 }
+
+// Register code generators separately to handle timing issues
+function registerCodeGenerators() {
+    if (!javascriptGenerator || generatorsDefinedFlag) return;
+    generatorsDefinedFlag = true;
+
+    javascriptGenerator.forBlock['move_forward'] = () => 'await moveForward();\n';
+    javascriptGenerator.forBlock['turn_left'] = () => 'await turnLeft();\n';
+    javascriptGenerator.forBlock['turn_right'] = () => 'await turnRight();\n';
+    javascriptGenerator.forBlock['collect_star'] = () => 'await collectStar();\n';
+    javascriptGenerator.forBlock['wait'] = (block: any) => `await wait(${block.getFieldValue('SECONDS')});\n`;
+
+    javascriptGenerator.forBlock['repeat_times'] = (block: any) => {
+        const times = block.getFieldValue('TIMES');
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `for (let i = 0; i < ${times}; i++) {\n${branch}}\n`;
+    };
+
+    javascriptGenerator.forBlock['anim_move_right'] = (block: any) => `await animMoveRight(${block.getFieldValue('PIXELS')});\n`;
+    javascriptGenerator.forBlock['anim_move_left'] = (block: any) => `await animMoveLeft(${block.getFieldValue('PIXELS')});\n`;
+    javascriptGenerator.forBlock['anim_move_up'] = (block: any) => `await animMoveUp(${block.getFieldValue('PIXELS')});\n`;
+    javascriptGenerator.forBlock['anim_move_down'] = (block: any) => `await animMoveDown(${block.getFieldValue('PIXELS')});\n`;
+    javascriptGenerator.forBlock['anim_jump'] = () => `await animJump();\n`;
+    javascriptGenerator.forBlock['anim_rotate'] = (block: any) => `await animRotate(${block.getFieldValue('DEGREES')});\n`;
+    javascriptGenerator.forBlock['anim_scale'] = (block: any) => `await animScale(${block.getFieldValue('PERCENT')});\n`;
+    javascriptGenerator.forBlock['anim_say'] = (block: any) => `await animSay("${block.getFieldValue('TEXT')}");\n`;
+
+    javascriptGenerator.forBlock['pixel_draw'] = () => 'pixelDraw();\n';
+    javascriptGenerator.forBlock['pixel_move_right'] = () => 'pixelMoveRight();\n';
+    javascriptGenerator.forBlock['pixel_move_down'] = () => 'pixelMoveDown();\n';
+    javascriptGenerator.forBlock['pixel_set_color'] = (block: any) => `pixelSetColor("${block.getFieldValue('COLOR')}");\n`;
+
+    javascriptGenerator.forBlock['math_number'] = (block: any) => [block.getFieldValue('NUM'), Order.ATOMIC];
+    javascriptGenerator.forBlock['math_print'] = (block: any) => {
+        const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.NONE) || '0';
+        return `mathPrint(${value});\n`;
+    };
+    javascriptGenerator.forBlock['math_add'] = (block: any) => {
+        const a = javascriptGenerator.valueToCode(block, 'A', Order.ADDITION) || '0';
+        const b = javascriptGenerator.valueToCode(block, 'B', Order.ADDITION) || '0';
+        return [`(${a} + ${b})`, Order.ADDITION];
+    };
+    javascriptGenerator.forBlock['math_subtract'] = (block: any) => {
+        const a = javascriptGenerator.valueToCode(block, 'A', Order.SUBTRACTION) || '0';
+        const b = javascriptGenerator.valueToCode(block, 'B', Order.SUBTRACTION) || '0';
+        return [`(${a} - ${b})`, Order.SUBTRACTION];
+    };
+    javascriptGenerator.forBlock['math_multiply'] = (block: any) => {
+        const a = javascriptGenerator.valueToCode(block, 'A', Order.MULTIPLICATION) || '0';
+        const b = javascriptGenerator.valueToCode(block, 'B', Order.MULTIPLICATION) || '0';
+        return [`(${a} * ${b})`, Order.MULTIPLICATION];
+    };
+    javascriptGenerator.forBlock['math_set_var'] = (block: any) => {
+        const varName = block.getFieldValue('VAR');
+        const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || '0';
+        return `mathSetVar("${varName}", ${value});\n`;
+    };
+
+    javascriptGenerator.forBlock['music_play_note'] = (block: any) => `await musicPlayNote("${block.getFieldValue('NOTE')}");\n`;
+    javascriptGenerator.forBlock['music_rest'] = (block: any) => `await musicRest(${block.getFieldValue('BEATS')});\n`;
+}
+
