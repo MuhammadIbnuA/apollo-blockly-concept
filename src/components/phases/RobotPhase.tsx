@@ -1,15 +1,16 @@
 /**
  * BlockyKids - Robot Phase
- * With working Blockly integration
+ * With Dual Mode: Blockly blocks and Python code
  */
 
 'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
-import BlocklyWorkspace from '@/components/BlocklyWorkspace';
+import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
 import { RobotLevel } from '@/types';
+import { executePythonRobotCode, RobotAction } from '@/services/codeExecutor';
 
 interface RobotPhaseProps {
     onLevelComplete: (levelId: number) => void;
@@ -167,6 +168,7 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
     const [robotDir, setRobotDir] = useState<Direction>('east');
     const [collectedStars, setCollectedStars] = useState<Set<string>>(new Set());
     const [isRunning, setIsRunning] = useState(false);
+    const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
 
     const level = levels[currentLevel];
 
@@ -174,6 +176,11 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
     const currentToolbox = useMemo(() => {
         return generateToolbox(level.allowedBlocks);
     }, [level.allowedBlocks]);
+
+    // Python code template
+    const pythonTemplate = useMemo(() => {
+        return `# ${level.name}\n# ${level.description}\n\n# Fungsi yang tersedia:\n# moveForward() - Maju\n# turnLeft() - Belok kiri\n# turnRight() - Belok kanan\n# collectStar() - Ambil bintang\n\n`;
+    }, [level.name, level.description]);
 
     const resetRobot = useCallback(() => {
         const lvl = levels[currentLevel];
@@ -201,50 +208,111 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
         let dir = level.robot.direction as Direction;
         const collected = new Set<string>();
 
-        const moveForward = async () => {
-            const dx = dir === 'east' ? 1 : dir === 'west' ? -1 : 0;
-            const dy = dir === 'south' ? 1 : dir === 'north' ? -1 : 0;
-            const newX = Math.max(0, Math.min(pos.x + dx, level.width - 1));
-            const newY = Math.max(0, Math.min(pos.y + dy, level.height - 1));
-            pos = { x: newX, y: newY };
-            setRobotPos({ x: newX, y: newY });
-            await new Promise(r => setTimeout(r, 400));
-        };
-
-        const turnLeft = async () => {
-            const dirs: Direction[] = ['north', 'west', 'south', 'east'];
-            dir = dirs[(dirs.indexOf(dir) + 1) % 4];
-            setRobotDir(dir);
-            await new Promise(r => setTimeout(r, 300));
-        };
-
-        const turnRight = async () => {
-            const dirs: Direction[] = ['north', 'east', 'south', 'west'];
-            dir = dirs[(dirs.indexOf(dir) + 1) % 4];
-            setRobotDir(dir);
-            await new Promise(r => setTimeout(r, 300));
-        };
-
-        const collectStar = async () => {
-            const key = `${pos.x},${pos.y}`;
-            if (level.stars.some(s => s.x === pos.x && s.y === pos.y)) {
-                collected.add(key);
-                setCollectedStars(new Set(collected));
-                showToast('⭐ Bintang diambil!', 'success');
+        // Execute actions helper for Python mode
+        const executeActions = async (actions: RobotAction[]) => {
+            for (const action of actions) {
+                switch (action.type) {
+                    case 'move_forward': {
+                        const dx = dir === 'east' ? 1 : dir === 'west' ? -1 : 0;
+                        const dy = dir === 'south' ? 1 : dir === 'north' ? -1 : 0;
+                        const newX = Math.max(0, Math.min(pos.x + dx, level.width - 1));
+                        const newY = Math.max(0, Math.min(pos.y + dy, level.height - 1));
+                        pos = { x: newX, y: newY };
+                        setRobotPos({ x: newX, y: newY });
+                        await new Promise(r => setTimeout(r, 400));
+                        break;
+                    }
+                    case 'turn_left': {
+                        const dirs: Direction[] = ['north', 'west', 'south', 'east'];
+                        dir = dirs[(dirs.indexOf(dir) + 1) % 4];
+                        setRobotDir(dir);
+                        await new Promise(r => setTimeout(r, 300));
+                        break;
+                    }
+                    case 'turn_right': {
+                        const dirs: Direction[] = ['north', 'east', 'south', 'west'];
+                        dir = dirs[(dirs.indexOf(dir) + 1) % 4];
+                        setRobotDir(dir);
+                        await new Promise(r => setTimeout(r, 300));
+                        break;
+                    }
+                    case 'collect_star': {
+                        const key = `${pos.x},${pos.y}`;
+                        if (level.stars.some(s => s.x === pos.x && s.y === pos.y)) {
+                            collected.add(key);
+                            setCollectedStars(new Set(collected));
+                            showToast('⭐ Bintang diambil!', 'success');
+                        }
+                        await new Promise(r => setTimeout(r, 200));
+                        break;
+                    }
+                    case 'wait': {
+                        await new Promise(r => setTimeout(r, (action.value || 1) * 1000));
+                        break;
+                    }
+                }
             }
-            await new Promise(r => setTimeout(r, 200));
-        };
-
-        const wait = async (sec: number) => {
-            await new Promise(r => setTimeout(r, sec * 1000));
         };
 
         try {
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('moveForward', 'turnLeft', 'turnRight', 'collectStar', 'wait', `
-        return (async () => { ${currentCode} })();
-      `);
-            await fn(moveForward, turnLeft, turnRight, collectStar, wait);
+            if (workspaceMode === 'block') {
+                // Block mode - execute JavaScript locally
+                const moveForward = async () => {
+                    const dx = dir === 'east' ? 1 : dir === 'west' ? -1 : 0;
+                    const dy = dir === 'south' ? 1 : dir === 'north' ? -1 : 0;
+                    const newX = Math.max(0, Math.min(pos.x + dx, level.width - 1));
+                    const newY = Math.max(0, Math.min(pos.y + dy, level.height - 1));
+                    pos = { x: newX, y: newY };
+                    setRobotPos({ x: newX, y: newY });
+                    await new Promise(r => setTimeout(r, 400));
+                };
+
+                const turnLeft = async () => {
+                    const dirs: Direction[] = ['north', 'west', 'south', 'east'];
+                    dir = dirs[(dirs.indexOf(dir) + 1) % 4];
+                    setRobotDir(dir);
+                    await new Promise(r => setTimeout(r, 300));
+                };
+
+                const turnRight = async () => {
+                    const dirs: Direction[] = ['north', 'east', 'south', 'west'];
+                    dir = dirs[(dirs.indexOf(dir) + 1) % 4];
+                    setRobotDir(dir);
+                    await new Promise(r => setTimeout(r, 300));
+                };
+
+                const collectStar = async () => {
+                    const key = `${pos.x},${pos.y}`;
+                    if (level.stars.some(s => s.x === pos.x && s.y === pos.y)) {
+                        collected.add(key);
+                        setCollectedStars(new Set(collected));
+                        showToast('⭐ Bintang diambil!', 'success');
+                    }
+                    await new Promise(r => setTimeout(r, 200));
+                };
+
+                const wait = async (sec: number) => {
+                    await new Promise(r => setTimeout(r, sec * 1000));
+                };
+
+                // eslint-disable-next-line no-new-func
+                const fn = new Function('moveForward', 'turnLeft', 'turnRight', 'collectStar', 'wait', `
+                    return (async () => { ${currentCode} })();
+                `);
+                await fn(moveForward, turnLeft, turnRight, collectStar, wait);
+            } else {
+                // Python mode - execute via Python executor
+                showToast('🐍 Menjalankan Python...', 'info');
+                const result = await executePythonRobotCode(currentCode);
+
+                if (result.success && result.actions.length > 0) {
+                    await executeActions(result.actions);
+                } else if (!result.success) {
+                    showToast('❌ Error Python: ' + result.error, 'error');
+                    setIsRunning(false);
+                    return;
+                }
+            }
 
             // Check win condition
             const atGoal = pos.x === level.goal.x && pos.y === level.goal.y;
@@ -267,7 +335,7 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
         }
 
         setIsRunning(false);
-    }, [currentCode, currentLevel, isRunning, level, levels.length, loadLevel, onLevelComplete, resetRobot, showToast]);
+    }, [currentCode, currentLevel, isRunning, level, levels.length, loadLevel, onLevelComplete, resetRobot, showToast, workspaceMode]);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_1fr] gap-5 min-h-[calc(100vh-94px)]">
@@ -336,13 +404,16 @@ export default function RobotPhase({ onLevelComplete, showToast }: RobotPhasePro
                 </div>
             </div>
 
-            {/* Blockly */}
+            {/* Dual Mode Workspace */}
             <div className="bg-[#252547] rounded-2xl overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold">🧩 Blok Kode</h3>
-                </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
+                    <DualModeWorkspace
+                        toolbox={currentToolbox}
+                        onCodeChange={setCurrentCode}
+                        onModeChange={setWorkspaceMode}
+                        initialMode="block"
+                        pythonCodeTemplate={pythonTemplate}
+                    />
                 </div>
             </div>
         </div>

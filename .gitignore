@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Unused/Development Files
+# Judge0 Docker setup (replaced by python-executor)
+/judge0/
+
+# Monaco Judge0 example project
+/monaco-judge0/
+
+# Docker installer script
+get-docker.sh
+
+# Python executor dependencies
+/python-executor/node_modules/

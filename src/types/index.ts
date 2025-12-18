@@ -144,3 +144,25 @@ export interface AdminChallenge {
     createdAt: string;
     updatedAt: string;
 }
+
+// ===================================
+// Dual Mode Workspace Types
+// ===================================
+export type WorkspaceMode = 'block' | 'code';
+
+export interface ExecutionResult {
+    status: 'success' | 'error' | 'timeout' | 'pending' | 'compile_error';
+    output?: string;
+    error?: string;
+    stderr?: string;
+    time?: string;
+    memory?: number;
+    exitCode?: number;
+}
+
+export interface DualModeConfig {
+    enableBlockMode: boolean;
+    enableCodeMode: boolean;
+    defaultMode: WorkspaceMode;
+    pythonTemplate?: string;
+}

@@ -1,15 +1,16 @@
 /**
  * BlockyKids - Pixel Art Phase
- * With working Blockly integration
+ * With Dual Mode: Blockly blocks and Python code
  */
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
-import BlocklyWorkspace from '@/components/BlocklyWorkspace';
+import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
 import { PixelArtLevel } from '@/types';
+import { executePythonPixelCode, PixelAction } from '@/services/codeExecutor';
 
 interface PixelArtPhaseProps {
     onLevelComplete: (levelId: number) => void;
@@ -109,6 +110,7 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
     const [currentColor, setCurrentColor] = useState('#ff0000');
     const [isRunning, setIsRunning] = useState(false);
+    const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
     const drawnPixelsRef = useRef<Set<string>>(new Set());
 
     const level = levels[currentLevel];
@@ -117,6 +119,11 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
     const currentToolbox = useMemo(() => {
         return generateToolbox(level.allowedBlocks);
     }, [level.allowedBlocks]);
+
+    // Python code template
+    const pythonTemplate = useMemo(() => {
+        return `# ${level.name}\n# ${level.description}\n\n# Fungsi yang tersedia:\n# draw() - Gambar pixel\n# moveRight() - Geser kanan\n# moveDown() - Geser bawah\n# setColor(color) - Set warna\n\n`;
+    }, [level.name, level.description]);
 
     const resetGrid = useCallback(() => {
         setGrid(Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill('')));
@@ -158,24 +165,51 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
         };
 
         try {
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('pixelDraw', 'pixelMoveRight', 'pixelMoveDown', 'pixelSetColor', currentCode);
-            fn(pixelDraw, pixelMoveRight, pixelMoveDown, pixelSetColor);
+            if (workspaceMode === 'code') {
+                // Python mode
+                showToast('🐍 Menjalankan Python...', 'info');
+                const result = await executePythonPixelCode(currentCode);
 
-            // Apply all drawing operations to React state at once
-            // Must create new array references for React to detect changes
-            setGrid(tempGrid.map(row => [...row]));
-            setCursorPos({ x: cx, y: cy });
-            setCurrentColor(color);
-
-            showToast('Gambar selesai!', 'success');
+                if (result.success && result.actions.length > 0) {
+                    for (const action of result.actions) {
+                        switch (action.type) {
+                            case 'draw':
+                                if (action.color) color = action.color;
+                                pixelDraw();
+                                break;
+                            case 'move_right': pixelMoveRight(); break;
+                            case 'move_down': pixelMoveDown(); break;
+                            case 'set_color':
+                                if (action.color) pixelSetColor(action.color);
+                                break;
+                        }
+                    }
+                    setGrid(tempGrid.map(row => [...row]));
+                    setCursorPos({ x: cx, y: cy });
+                    setCurrentColor(color);
+                    showToast('🎨 Gambar selesai!', 'success');
+                } else if (!result.success) {
+                    showToast('❌ Error Python: ' + result.error, 'error');
+                    setIsRunning(false);
+                    return;
+                }
+            } else {
+                // Block mode - JavaScript
+                // eslint-disable-next-line no-new-func
+                const fn = new Function('pixelDraw', 'pixelMoveRight', 'pixelMoveDown', 'pixelSetColor', currentCode);
+                fn(pixelDraw, pixelMoveRight, pixelMoveDown, pixelSetColor);
+                setGrid(tempGrid.map(row => [...row]));
+                setCursorPos({ x: cx, y: cy });
+                setCurrentColor(color);
+                showToast('🎨 Gambar selesai!', 'success');
+            }
         } catch (e) {
             console.error('Error:', e);
             showToast('Error: ' + (e as Error).message, 'error');
         }
 
         setIsRunning(false);
-    }, [currentCode, isRunning, resetGrid, showToast]);
+    }, [currentCode, isRunning, resetGrid, showToast, workspaceMode]);
 
     const handleCheck = useCallback(() => {
         const target = level.target;
@@ -302,13 +336,16 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
                 </div>
             </div>
 
-            {/* Blockly */}
+            {/* Dual Mode Workspace */}
             <div className="bg-[#252547] rounded-2xl overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold">🧩 Blok Kode</h3>
-                </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
+                    <DualModeWorkspace
+                        toolbox={currentToolbox}
+                        onCodeChange={setCurrentCode}
+                        onModeChange={setWorkspaceMode}
+                        initialMode="block"
+                        pythonCodeTemplate={pythonTemplate}
+                    />
                 </div>
             </div>
         </div>

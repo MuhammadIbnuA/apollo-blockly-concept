@@ -1,6 +1,6 @@
 /**
  * BlockyKids - Animation Phase
- * With working Blockly integration
+ * With Dual Mode: Blockly blocks and Python code
  */
 
 'use client';
@@ -8,8 +8,9 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
-import BlocklyWorkspace from '@/components/BlocklyWorkspace';
+import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
 import { AnimationLevel, Sprite } from '@/types';
+import { executePythonAnimationCode, AnimationAction } from '@/services/codeExecutor';
 
 interface AnimationPhaseProps {
     onLevelComplete: (levelId: number) => void;
@@ -129,6 +130,7 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
     const [currentCode, setCurrentCode] = useState('');
     const [sprites, setSprites] = useState<Sprite[]>([]);
     const [isRunning, setIsRunning] = useState(false);
+    const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
     const actionLogRef = useRef<string[]>([]);
 
     const level = levels[currentLevel];
@@ -137,6 +139,11 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
     const currentToolbox = useMemo(() => {
         return generateToolbox(level.allowedBlocks);
     }, [level.allowedBlocks]);
+
+    // Python code template
+    const pythonTemplate = useMemo(() => {
+        return `# ${level.name}\n# ${level.description}\n\n# Fungsi yang tersedia:\n# moveRight(pixels), moveLeft(pixels), moveUp(pixels), moveDown(pixels)\n# jump(), rotate(degrees), scale(percent), say(text)\n\n`;
+    }, [level.name, level.description]);
 
     // Initialize sprites when level changes
     const loadLevel = useCallback((idx: number) => {
@@ -229,21 +236,50 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
         };
 
         try {
-            // eslint-disable-next-line no-new-func
-            const fn = new Function(
-                'animMoveRight', 'animMoveLeft', 'animMoveUp', 'animMoveDown',
-                'animJump', 'animRotate', 'animScale', 'animSay', 'wait',
-                `return (async () => { ${currentCode} })();`
-            );
-            await fn(animMoveRight, animMoveLeft, animMoveUp, animMoveDown, animJump, animRotate, animScale, animSay, wait);
-            showToast('✨ Animasi selesai!', 'success');
+            if (workspaceMode === 'code') {
+                // Python mode - execute via executor
+                showToast('🐍 Menjalankan Python...', 'info');
+                const result = await executePythonAnimationCode(currentCode);
+
+                if (result.success && result.actions.length > 0) {
+                    // Execute actions from Python
+                    for (const action of result.actions) {
+                        switch (action.type) {
+                            case 'move_right': await animMoveRight(action.value || 50); break;
+                            case 'move_left': await animMoveLeft(action.value || 50); break;
+                            case 'move_up': await animMoveUp(action.value || 50); break;
+                            case 'move_down': await animMoveDown(action.value || 50); break;
+                            case 'jump': await animJump(); break;
+                            case 'rotate': await animRotate(action.value || 90); break;
+                            case 'scale': await animScale(action.value || 100); break;
+                            case 'say': await animSay(action.text || ''); break;
+                            case 'wait': await wait(action.value || 1); break;
+                        }
+                    }
+                    showToast('✨ Animasi selesai!', 'success');
+                } else if (!result.success) {
+                    showToast('❌ Error Python: ' + result.error, 'error');
+                    setIsRunning(false);
+                    return;
+                }
+            } else {
+                // Block mode - execute JavaScript locally
+                // eslint-disable-next-line no-new-func
+                const fn = new Function(
+                    'animMoveRight', 'animMoveLeft', 'animMoveUp', 'animMoveDown',
+                    'animJump', 'animRotate', 'animScale', 'animSay', 'wait',
+                    `return (async () => { ${currentCode} })();`
+                );
+                await fn(animMoveRight, animMoveLeft, animMoveUp, animMoveDown, animJump, animRotate, animScale, animSay, wait);
+                showToast('✨ Animasi selesai!', 'success');
+            }
         } catch (e) {
             console.error('Error running animation:', e);
             showToast('Error: ' + (e as Error).message, 'error');
         }
 
         setIsRunning(false);
-    }, [currentCode, currentLevel, isRunning, levels, showToast]);
+    }, [currentCode, currentLevel, isRunning, levels, showToast, workspaceMode]);
 
     const handleCheck = useCallback(() => {
         const goal = level.goal;
@@ -348,13 +384,16 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
                 </div>
             </div>
 
-            {/* Blockly */}
+            {/* Dual Mode Workspace */}
             <div className="bg-[#252547] rounded-2xl overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold">🧩 Blok Kode</h3>
-                </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
+                    <DualModeWorkspace
+                        toolbox={currentToolbox}
+                        onCodeChange={setCurrentCode}
+                        onModeChange={setWorkspaceMode}
+                        initialMode="block"
+                        pythonCodeTemplate={pythonTemplate}
+                    />
                 </div>
             </div>
         </div>

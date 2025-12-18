@@ -1,6 +1,6 @@
 /**
  * BlockyKids - Music Phase
- * With working Blockly and Web Audio
+ * With Dual Mode: Blockly blocks and Python code
  */
 
 'use client';
@@ -8,8 +8,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
-import BlocklyWorkspace from '@/components/BlocklyWorkspace';
+import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
 import { MusicLevel } from '@/types';
+import { executePythonMusicCode, MusicAction } from '@/services/codeExecutor';
 
 interface MusicPhaseProps {
     onLevelComplete: (levelId: number) => void;
@@ -113,6 +114,7 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
     const [playedNotes, setPlayedNotes] = useState<string[]>([]);
     const [activeKey, setActiveKey] = useState<number | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const level = levels[currentLevel];
@@ -121,6 +123,11 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
     const currentToolbox = useMemo(() => {
         return generateToolbox(level.allowedBlocks);
     }, [level.allowedBlocks]);
+
+    // Python code template
+    const pythonTemplate = useMemo(() => {
+        return `# ${level.name}\n# ${level.description}\n\n# Fungsi yang tersedia:\n# playNote(note) - Mainkan nada (C4, D4, E4, F4, G4, A4, B4, C5)\n# rest(beats) - Istirahat\n\n`;
+    }, [level.name, level.description]);
 
     // Initialize audio context
     useEffect(() => {
@@ -187,19 +194,41 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
         };
 
         try {
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('musicPlayNote', 'musicRest', `
-        return (async () => { ${currentCode} })();
-      `);
-            await fn(musicPlayNote, musicRest);
-            showToast('🎵 Musik selesai!', 'success');
+            if (workspaceMode === 'code') {
+                // Python mode
+                showToast('🐍 Menjalankan Python...', 'info');
+                const result = await executePythonMusicCode(currentCode);
+
+                if (result.success && result.actions.length > 0) {
+                    for (const action of result.actions) {
+                        if (action.type === 'play_note' && action.note) {
+                            await musicPlayNote(action.note);
+                        } else if (action.type === 'rest') {
+                            await musicRest(action.beats || 1);
+                        }
+                    }
+                    showToast('🎵 Musik selesai!', 'success');
+                } else if (!result.success) {
+                    showToast('❌ Error Python: ' + result.error, 'error');
+                    setIsPlaying(false);
+                    return;
+                }
+            } else {
+                // Block mode - JavaScript
+                // eslint-disable-next-line no-new-func
+                const fn = new Function('musicPlayNote', 'musicRest', `
+                    return (async () => { ${currentCode} })();
+                `);
+                await fn(musicPlayNote, musicRest);
+                showToast('🎵 Musik selesai!', 'success');
+            }
         } catch (e) {
             console.error('Error playing music:', e);
             showToast('Error: ' + (e as Error).message, 'error');
         }
 
         setIsPlaying(false);
-    }, [currentCode, isPlaying, playNoteByName, showToast]);
+    }, [currentCode, isPlaying, playNoteByName, showToast, workspaceMode]);
 
     const handleCheck = useCallback(() => {
         const goal = level.goal;
@@ -306,13 +335,16 @@ export default function MusicPhase({ onLevelComplete, showToast }: MusicPhasePro
                 </div>
             </div>
 
-            {/* Blockly */}
+            {/* Dual Mode Workspace */}
             <div className="bg-[#252547] rounded-2xl overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold">🧩 Blok Kode</h3>
-                </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
+                    <DualModeWorkspace
+                        toolbox={currentToolbox}
+                        onCodeChange={setCurrentCode}
+                        onModeChange={setWorkspaceMode}
+                        initialMode="block"
+                        pythonCodeTemplate={pythonTemplate}
+                    />
                 </div>
             </div>
         </div>

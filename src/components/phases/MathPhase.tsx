@@ -1,15 +1,16 @@
 /**
  * BlockyKids - Math Phase
- * With working Blockly integration
+ * With Dual Mode: Blockly blocks and Python code
  */
 
 'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
-import BlocklyWorkspace from '@/components/BlocklyWorkspace';
+import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
 import { MathLevel } from '@/types';
+import { runPython } from '@/services/judge0';
 
 interface MathPhaseProps {
     onLevelComplete: (levelId: number) => void;
@@ -111,6 +112,8 @@ export default function MathPhase({ onLevelComplete, showToast }: MathPhaseProps
     const [currentCode, setCurrentCode] = useState('');
     const [output, setOutput] = useState<string[]>([]);
     const [variables, setVariables] = useState<Record<string, number>>({});
+    const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
+    const [isRunning, setIsRunning] = useState(false);
 
     const level = levels[currentLevel];
 
@@ -119,32 +122,64 @@ export default function MathPhase({ onLevelComplete, showToast }: MathPhaseProps
         return generateToolbox(level.allowedBlocks);
     }, [level.allowedBlocks]);
 
+    // Python code template for the level
+    const pythonTemplate = useMemo(() => {
+        return `# ${level.name}\n# ${level.description}\n\n# Tulis kode Python kamu di sini\n# Gunakan print() untuk menampilkan output\n\n`;
+    }, [level.name, level.description]);
+
     const handleRun = useCallback(async () => {
         setOutput([]);
         setVariables({});
+        setIsRunning(true);
 
-        const localVars: Record<string, number> = {};
+        if (workspaceMode === 'block') {
+            // Block mode - run JavaScript locally
+            const localVars: Record<string, number> = {};
 
-        const mathPrint = (value: number) => {
-            setOutput(prev => [...prev, String(value)]);
-        };
+            const mathPrint = (value: number) => {
+                setOutput(prev => [...prev, String(value)]);
+            };
 
-        const mathSetVar = (name: string, value: number) => {
-            localVars[name] = value;
-            setVariables(prev => ({ ...prev, [name]: value }));
-            mathPrint(value);
-        };
+            const mathSetVar = (name: string, value: number) => {
+                localVars[name] = value;
+                setVariables(prev => ({ ...prev, [name]: value }));
+                mathPrint(value);
+            };
 
-        try {
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('mathPrint', 'mathSetVar', currentCode);
-            fn(mathPrint, mathSetVar);
-            showToast('Program dijalankan!', 'info');
-        } catch (e) {
-            console.error('Error:', e);
-            showToast('Error: ' + (e as Error).message, 'error');
+            try {
+                // eslint-disable-next-line no-new-func
+                const fn = new Function('mathPrint', 'mathSetVar', currentCode);
+                fn(mathPrint, mathSetVar);
+                showToast('Program dijalankan!', 'info');
+            } catch (e) {
+                console.error('Error:', e);
+                showToast('Error: ' + (e as Error).message, 'error');
+            }
+        } else {
+            // Code mode - run Python via Judge0
+            try {
+                showToast('Menjalankan kode Python...', 'info');
+                const result = await runPython(currentCode);
+
+                if (result.status === 'success' && result.output) {
+                    const lines = result.output.split('\n').filter(l => l.trim());
+                    setOutput(lines);
+                    showToast('✨ Program Python selesai!', 'success');
+                } else if (result.status === 'compile_error') {
+                    showToast('❌ Syntax Error: ' + result.error, 'error');
+                } else if (result.status === 'error') {
+                    showToast('❌ Error: ' + result.error, 'error');
+                } else if (result.status === 'timeout') {
+                    showToast('⏱️ Timeout: Program terlalu lama', 'warning');
+                }
+            } catch (e) {
+                console.error('Judge0 Error:', e);
+                showToast('❌ Gagal menjalankan kode. Pastikan Judge0 server aktif.', 'error');
+            }
         }
-    }, [currentCode, showToast]);
+
+        setIsRunning(false);
+    }, [currentCode, workspaceMode, showToast]);
 
     const handleCheck = useCallback(() => {
         const expected = level.expectedOutput;
@@ -228,8 +263,10 @@ export default function MathPhase({ onLevelComplete, showToast }: MathPhaseProps
                 </div>
 
                 <div className="flex gap-3 justify-center">
-                    <Button variant="success" onClick={handleRun} icon="▶️">Jalankan</Button>
-                    <Button variant="primary" onClick={handleCheck} icon="✓">Periksa</Button>
+                    <Button variant="success" onClick={handleRun} disabled={isRunning} icon="▶️">
+                        {isRunning ? 'Menjalankan...' : 'Jalankan'}
+                    </Button>
+                    <Button variant="primary" onClick={handleCheck} disabled={isRunning} icon="✓">Periksa</Button>
                 </div>
 
                 <div className="flex items-center gap-2 mt-4 p-3 bg-[#fdcb6e]/10 border-l-4 border-[#fdcb6e] rounded-r-xl text-gray-300">
@@ -238,13 +275,16 @@ export default function MathPhase({ onLevelComplete, showToast }: MathPhaseProps
                 </div>
             </div>
 
-            {/* Blockly */}
+            {/* Dual Mode Workspace */}
             <div className="bg-[#252547] rounded-2xl overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold">🧩 Blok Kode</h3>
-                </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace toolbox={currentToolbox} onCodeChange={setCurrentCode} />
+                    <DualModeWorkspace
+                        toolbox={currentToolbox}
+                        onCodeChange={setCurrentCode}
+                        onModeChange={setWorkspaceMode}
+                        initialMode="block"
+                        pythonCodeTemplate={pythonTemplate}
+                    />
                 </div>
             </div>
         </div>

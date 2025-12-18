@@ -1,6 +1,7 @@
 /**
  * BlockyKids - Tutorial Phase
  * Fase pengenalan dasar block programming dengan grid-based challenges
+ * Dengan Dual Mode: Block dan Python Code
  */
 
 'use client';
@@ -9,7 +10,13 @@ import { useState, useCallback, useMemo } from 'react';
 import { BaseLevel } from '@/types';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
-import BlocklyWorkspace from '@/components/BlocklyWorkspace';
+import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
+import {
+    executePythonRobotCode,
+    getTutorialPythonTemplate,
+    countPythonActions,
+    RobotAction
+} from '@/services/codeExecutor';
 
 interface TutorialPhaseProps {
     onLevelComplete: (levelId: number) => void;
@@ -238,6 +245,7 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
     const [levels] = useState<TutorialLevel[]>(DEFAULT_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
+    const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
 
     // Robot state
     const [robotPosition, setRobotPosition] = useState({ x: 0, y: 0 });
@@ -246,6 +254,10 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
     const [hasRun, setHasRun] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
 
+    // Python output state
+    const [pythonOutput, setPythonOutput] = useState<string>('');
+    const [pythonError, setPythonError] = useState<string>('');
+
     const level = levels[currentLevel];
 
     // Generate dynamic toolbox
@@ -253,15 +265,22 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
         return generateToolbox(level.allowedBlocks);
     }, [level.allowedBlocks]);
 
+    // Python code template - updated with new service
+    const pythonTemplate = useMemo(() => {
+        return getTutorialPythonTemplate(level.id, level.name, level.instruction);
+    }, [level.id, level.name, level.instruction]);
+
     // Reset level state
     const resetLevel = useCallback(() => {
         setRobotPosition({ ...level.startPosition });
         setRobotDirection(level.startDirection);
         setCollectedStars([]);
         setHasRun(false);
+        setPythonOutput('');
+        setPythonError('');
     }, [level]);
 
-    // Count blocks in generated code
+    // Count blocks in generated code (for Block mode)
     const countBlocksInCode = useCallback((code: string): number => {
         let count = 0;
         count += (code.match(/await moveForward\(\)/g) || []).length;
@@ -272,22 +291,71 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
         return count;
     }, []);
 
-    // Handle running the program
-    const handleRun = useCallback(async () => {
-        if (isRunning) return;
+    // Execute robot actions (shared by both modes)
+    const executeActions = useCallback(async (actions: RobotAction[]) => {
+        let currentDir = level.startDirection;
+        let currentPos = { ...level.startPosition };
+        const collected: { x: number; y: number }[] = [];
 
-        const blockCount = countBlocksInCode(currentCode);
-        if (blockCount === 0) {
-            showToast('❌ Pasang blok dulu di area kerja!', 'warning');
-            return;
+        for (const action of actions) {
+            switch (action.type) {
+                case 'move_forward': {
+                    let newPos = { ...currentPos };
+                    switch (currentDir) {
+                        case 'up': newPos.y -= 1; break;
+                        case 'down': newPos.y += 1; break;
+                        case 'left': newPos.x -= 1; break;
+                        case 'right': newPos.x += 1; break;
+                    }
+                    // Boundary check
+                    newPos.x = Math.max(0, Math.min(level.gridSize.cols - 1, newPos.x));
+                    newPos.y = Math.max(0, Math.min(level.gridSize.rows - 1, newPos.y));
+                    currentPos = newPos;
+                    setRobotPosition(newPos);
+                    await new Promise(r => setTimeout(r, 400));
+                    break;
+                }
+                case 'turn_left': {
+                    const dirs: Direction[] = ['up', 'left', 'down', 'right'];
+                    const idx = dirs.indexOf(currentDir);
+                    currentDir = dirs[(idx + 1) % 4];
+                    setRobotDirection(currentDir);
+                    await new Promise(r => setTimeout(r, 300));
+                    break;
+                }
+                case 'turn_right': {
+                    const dirs: Direction[] = ['up', 'right', 'down', 'left'];
+                    const idx = dirs.indexOf(currentDir);
+                    currentDir = dirs[(idx + 1) % 4];
+                    setRobotDirection(currentDir);
+                    await new Promise(r => setTimeout(r, 300));
+                    break;
+                }
+                case 'collect_star': {
+                    if (level.stars) {
+                        const starHere = level.stars.find(s => s.x === currentPos.x && s.y === currentPos.y);
+                        if (starHere && !collected.some(c => c.x === starHere.x && c.y === starHere.y)) {
+                            collected.push(starHere);
+                            setCollectedStars([...collected]);
+                            showToast('⭐ Bintang diambil!', 'success');
+                        } else if (!starHere) {
+                            showToast('❌ Tidak ada bintang di sini!', 'warning');
+                        }
+                    }
+                    await new Promise(r => setTimeout(r, 300));
+                    break;
+                }
+                case 'wait': {
+                    const seconds = action.value || 1;
+                    await new Promise(r => setTimeout(r, seconds * 1000));
+                    break;
+                }
+            }
         }
+    }, [level, showToast]);
 
-        // Reset before running
-        setRobotPosition({ ...level.startPosition });
-        setRobotDirection(level.startDirection);
-        setCollectedStars([]);
-        setIsRunning(true);
-
+    // Handle running the program - BLOCK MODE
+    const runBlockMode = useCallback(async () => {
         let currentDir = level.startDirection;
         let currentPos = { ...level.startPosition };
         const collected: { x: number; y: number }[] = [];
@@ -301,7 +369,6 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
                 case 'left': newPos.x -= 1; break;
                 case 'right': newPos.x += 1; break;
             }
-            // Boundary check
             newPos.x = Math.max(0, Math.min(level.gridSize.cols - 1, newPos.x));
             newPos.y = Math.max(0, Math.min(level.gridSize.rows - 1, newPos.y));
             currentPos = newPos;
@@ -326,7 +393,6 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
         };
 
         const collectStar = async () => {
-            // Check if there's a star at current position
             if (level.stars) {
                 const starHere = level.stars.find(s => s.x === currentPos.x && s.y === currentPos.y);
                 if (starHere && !collected.some(c => c.x === starHere.x && c.y === starHere.y)) {
@@ -340,29 +406,95 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
             await new Promise(r => setTimeout(r, 300));
         };
 
+        // eslint-disable-next-line no-new-func
+        const fn = new Function('moveForward', 'turnLeft', 'turnRight', 'collectStar', `
+            return (async () => { ${currentCode} })();
+        `);
+        await fn(moveForward, turnLeft, turnRight, collectStar);
+    }, [currentCode, level, showToast]);
+
+    // Handle running the program - PYTHON MODE via Judge0
+    const runPythonMode = useCallback(async () => {
+        setPythonOutput('');
+        setPythonError('');
+        showToast('🐍 Menjalankan Python...', 'info');
+
+        const result = await executePythonRobotCode(currentCode);
+
+        if (result.success) {
+            if (result.output) {
+                setPythonOutput(result.output);
+            }
+
+            if (result.actions && result.actions.length > 0) {
+                await executeActions(result.actions);
+            } else {
+                showToast('⚠️ Tidak ada aksi robot dalam kode', 'warning');
+            }
+        } else {
+            setPythonError(result.error || 'Error tidak diketahui');
+            showToast('❌ Error Python!', 'error');
+            throw new Error(result.error);
+        }
+    }, [currentCode, executeActions, showToast]);
+
+    // Main handleRun function
+    const handleRun = useCallback(async () => {
+        if (isRunning) return;
+
+        // Validation based on mode
+        if (workspaceMode === 'block') {
+            const blockCount = countBlocksInCode(currentCode);
+            if (blockCount === 0) {
+                showToast('❌ Pasang blok dulu di area kerja!', 'warning');
+                return;
+            }
+        } else {
+            // Python mode - check for actions
+            const actionCount = countPythonActions(currentCode);
+            if (actionCount === 0) {
+                showToast('❌ Tulis kode Python dengan fungsi robot! Contoh: maju()', 'warning');
+                return;
+            }
+        }
+
+        // Reset before running
+        setRobotPosition({ ...level.startPosition });
+        setRobotDirection(level.startDirection);
+        setCollectedStars([]);
+        setIsRunning(true);
+        setPythonOutput('');
+        setPythonError('');
+
         try {
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('moveForward', 'turnLeft', 'turnRight', 'collectStar', `
-                return (async () => { ${currentCode} })();
-            `);
-            await fn(moveForward, turnLeft, turnRight, collectStar);
+            if (workspaceMode === 'block') {
+                await runBlockMode();
+            } else {
+                await runPythonMode();
+            }
             showToast('✨ Program selesai!', 'info');
         } catch (e) {
             console.error('Error:', e);
-            showToast('❌ Error: ' + (e as Error).message, 'error');
+            if (workspaceMode === 'block') {
+                showToast('❌ Error: ' + (e as Error).message, 'error');
+            }
         }
 
         setHasRun(true);
         setIsRunning(false);
-    }, [currentCode, countBlocksInCode, isRunning, level, showToast]);
+    }, [currentCode, countBlocksInCode, workspaceMode, isRunning, level, showToast, runBlockMode, runPythonMode]);
 
     // Handle checking completion
     const handleCheck = useCallback(() => {
-        const blockCount = countBlocksInCode(currentCode);
+        // Get action count based on mode
+        const actionCount = workspaceMode === 'block'
+            ? countBlocksInCode(currentCode)
+            : countPythonActions(currentCode);
 
         // 1. Check block count requirement
-        if (level.requireBlockCount && blockCount < level.requireBlockCount) {
-            showToast(`❌ Kamu perlu ${level.requireBlockCount} blok. Saat ini: ${blockCount}`, 'warning');
+        if (level.requireBlockCount && actionCount < level.requireBlockCount) {
+            const term = workspaceMode === 'block' ? 'blok' : 'aksi';
+            showToast(`❌ Kamu perlu ${level.requireBlockCount} ${term}. Saat ini: ${actionCount}`, 'warning');
             return;
         }
 
@@ -405,9 +537,11 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
                 setRobotDirection(next.startDirection);
                 setCollectedStars([]);
                 setHasRun(false);
+                setPythonOutput('');
+                setPythonError('');
             }, 1200);
         }
-    }, [currentCode, countBlocksInCode, hasRun, robotPosition, collectedStars, level, levels, currentLevel, onLevelComplete, showToast]);
+    }, [currentCode, countBlocksInCode, workspaceMode, hasRun, robotPosition, collectedStars, level, levels, currentLevel, onLevelComplete, showToast]);
 
     // Handle level selection
     const handleSelectLevel = useCallback((idx: number) => {
@@ -417,6 +551,8 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
         setRobotDirection(selected.startDirection);
         setCollectedStars([]);
         setHasRun(false);
+        setPythonOutput('');
+        setPythonError('');
     }, [levels]);
 
     // Check if a star is at position and not collected
@@ -518,6 +654,19 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
                     )}
                 </div>
 
+                {/* Python Output Panel - Only show in code mode */}
+                {workspaceMode === 'code' && (pythonOutput || pythonError) && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm font-mono ${pythonError ? 'bg-red-900/30 border border-red-500/50' : 'bg-green-900/30 border border-green-500/50'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span>{pythonError ? '❌' : '📤'}</span>
+                            <span className="font-semibold">{pythonError ? 'Error' : 'Output'}</span>
+                        </div>
+                        <pre className="whitespace-pre-wrap break-words text-xs">
+                            {pythonError || pythonOutput}
+                        </pre>
+                    </div>
+                )}
+
                 {/* Controls */}
                 <div className="flex gap-3 justify-center mt-2">
                     <Button variant="success" onClick={handleRun} disabled={isRunning} icon="▶️">
@@ -536,17 +685,26 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
                     <span>💡</span>
                     <span className="text-sm">{level.hint}</span>
                 </div>
+
+                {/* Python Mode Help */}
+                {workspaceMode === 'code' && (
+                    <div className="mt-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg text-xs text-blue-200">
+                        <div className="font-semibold mb-1">🐍 Fungsi Python yang tersedia:</div>
+                        <code className="block">maju() • belok_kiri() • belok_kanan() • ambil_bintang()</code>
+                        <div className="mt-1 text-blue-300/70">Atau gunakan: move_forward() • turn_left() • turn_right() • collect_star()</div>
+                    </div>
+                )}
             </div>
 
-            {/* Blockly Workspace */}
+            {/* Dual Mode Workspace */}
             <div className="bg-[#252547] rounded-2xl overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold">🧩 Blok Kode</h3>
-                </div>
                 <div className="flex-1 min-h-[500px]">
-                    <BlocklyWorkspace
+                    <DualModeWorkspace
                         toolbox={currentToolbox}
                         onCodeChange={setCurrentCode}
+                        onModeChange={setWorkspaceMode}
+                        initialMode="block"
+                        pythonCodeTemplate={pythonTemplate}
                     />
                 </div>
             </div>
