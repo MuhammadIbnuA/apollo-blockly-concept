@@ -1,28 +1,47 @@
 /**
- * BlockyKids - Local Python Executor Server
- * Simple Express server to execute Python code locally
- * For development only - NOT FOR PRODUCTION
+ * BlockyKids - Python Executor Server
+ * Express server to execute Python code
+ * Deploy to: Replit, Railway, Render
  */
 
 const express = require('express');
-const { spawn, execSync } = require('child_process');
+const { spawn } = require('child_process');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const app = express();
-const PORT = 2359;
+const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// CORS - Allow all origins for BlockyKids
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
 
-// Health check
+// Health check / About
+app.get('/', (req, res) => {
+    res.json({
+        name: 'BlockyKids Python Executor',
+        version: '1.0.0',
+        status: 'running',
+        endpoints: {
+            'GET /': 'This info',
+            'GET /about': 'Server info',
+            'POST /submissions': 'Execute Python code'
+        }
+    });
+});
+
 app.get('/about', (req, res) => {
     res.json({
         version: '1.0.0',
-        name: 'BlockyKids Local Python Executor',
-        description: 'Development-only Python execution server'
+        name: 'BlockyKids Python Executor',
+        description: 'Python code execution API for BlockyKids educational platform'
     });
 });
 
@@ -30,7 +49,6 @@ app.get('/about', (req, res) => {
 app.post('/submissions', async (req, res) => {
     const { source_code, language_id } = req.body;
     const base64Encoded = req.query.base64_encoded === 'true';
-    const waitForResult = req.query.wait === 'true';
 
     let code = source_code;
 
@@ -43,7 +61,7 @@ app.post('/submissions', async (req, res) => {
         }
     }
 
-    // Only support Python
+    // Only support Python (language_id 71)
     if (language_id !== 71) {
         return res.status(400).json({ error: 'Only Python (language_id=71) is supported' });
     }
@@ -51,20 +69,17 @@ app.post('/submissions', async (req, res) => {
     try {
         const result = await executePython(code);
 
-        if (waitForResult) {
-            res.json({
-                stdout: base64Encoded ? Buffer.from(result.stdout).toString('base64') : result.stdout,
-                stderr: base64Encoded ? Buffer.from(result.stderr).toString('base64') : result.stderr,
-                status: { id: result.success ? 3 : 11, description: result.success ? 'Accepted' : 'Runtime Error' },
-                time: '0.1',
-                memory: 1000,
-                exit_code: result.exitCode
-            });
-        } else {
-            // Return token for async mode (we just execute immediately)
-            const token = Date.now().toString(36);
-            res.json({ token });
-        }
+        res.json({
+            stdout: base64Encoded ? Buffer.from(result.stdout).toString('base64') : result.stdout,
+            stderr: base64Encoded ? Buffer.from(result.stderr).toString('base64') : result.stderr,
+            status: {
+                id: result.success ? 3 : 11,
+                description: result.success ? 'Accepted' : 'Runtime Error'
+            },
+            time: '0.1',
+            memory: 1000,
+            exit_code: result.exitCode
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -72,17 +87,16 @@ app.post('/submissions', async (req, res) => {
 
 function executePython(code) {
     return new Promise((resolve) => {
-        // Write code to temp file to avoid shell escaping issues
         const tempDir = os.tmpdir();
         const tempFile = path.join(tempDir, `blockykids_${Date.now()}.py`);
 
         try {
-            // Write code to temp file
             fs.writeFileSync(tempFile, code, 'utf-8');
 
-            // Execute Python with the temp file
-            const python = spawn('python', [tempFile], {
-                timeout: 10000, // 10 second timeout
+            // Try python3 first, fallback to python
+            const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+            const python = spawn(pythonCmd, [tempFile], {
+                timeout: 10000,
             });
 
             let stdout = '';
@@ -97,55 +111,30 @@ function executePython(code) {
             });
 
             python.on('close', (exitCode) => {
-                // Clean up temp file
-                try {
-                    fs.unlinkSync(tempFile);
-                } catch (e) {
-                    // Ignore cleanup errors
-                }
-
-                resolve({
-                    success: exitCode === 0,
-                    stdout,
-                    stderr,
-                    exitCode
-                });
+                cleanup(tempFile);
+                resolve({ success: exitCode === 0, stdout, stderr, exitCode });
             });
 
             python.on('error', (err) => {
-                // Clean up temp file
-                try {
-                    fs.unlinkSync(tempFile);
-                } catch (e) {
-                    // Ignore cleanup errors
-                }
-
-                resolve({
-                    success: false,
-                    stdout: '',
-                    stderr: err.message,
-                    exitCode: 1
-                });
+                cleanup(tempFile);
+                resolve({ success: false, stdout: '', stderr: err.message, exitCode: 1 });
             });
         } catch (err) {
-            // Clean up temp file on any error
-            try {
-                fs.unlinkSync(tempFile);
-            } catch (e) {
-                // Ignore cleanup errors
-            }
-
-            resolve({
-                success: false,
-                stdout: '',
-                stderr: err.message,
-                exitCode: 1
-            });
+            cleanup(tempFile);
+            resolve({ success: false, stdout: '', stderr: err.message, exitCode: 1 });
         }
     });
 }
 
-app.listen(PORT, () => {
-    console.log(`🐍 BlockyKids Python Executor running on http://localhost:${PORT}`);
-    console.log('⚠️  Development server only - NOT FOR PRODUCTION');
+function cleanup(filePath) {
+    try {
+        fs.unlinkSync(filePath);
+    } catch (e) {
+        // Ignore cleanup errors
+    }
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🐍 BlockyKids Python Executor running on port ${PORT}`);
+    console.log(`🌐 Server ready at http://0.0.0.0:${PORT}`);
 });

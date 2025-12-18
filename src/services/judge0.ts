@@ -3,9 +3,9 @@
  * Service untuk code execution menggunakan self-hosted Judge0
  */
 
-// Configuration for self-hosted Judge0
-// Default to localhost, can be overridden via environment variables
-const JUDGE0_API_URL = process.env.NEXT_PUBLIC_JUDGE0_URL || 'http://localhost:2359';
+// Configuration for Python Executor API
+// Uses Replit deployment by default, can override with NEXT_PUBLIC_JUDGE0_URL env var
+const JUDGE0_API_URL = process.env.NEXT_PUBLIC_JUDGE0_URL || 'https://58c49b59-8519-4977-9f46-1c91e83377c7-00-hwboarrnk2v4.sisko.replit.dev';
 
 // Language IDs in Judge0
 export const LANGUAGE_IDS = {
