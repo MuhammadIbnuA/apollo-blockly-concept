@@ -71,6 +71,95 @@ export default function DualModeWorkspace({
         }
     }, [mode, onCodeChange]);
 
+    // Convert Blockly JavaScript code to Python hint code
+    const convertBlockCodeToPython = useCallback((jsCode: string): string => {
+        if (!jsCode || jsCode.trim() === '') {
+            return pythonCodeTemplate;
+        }
+
+        // Parse the JavaScript code and convert to Python equivalents
+        let pythonHint = '# 🎯 Kode Python berdasarkan blok kamu:\n\n';
+
+        // Replace JavaScript robot commands with Python equivalents
+        const conversions = [
+            { js: /await moveForward\(\);?/g, py: 'maju()  # moveForward()' },
+            { js: /await turnLeft\(\);?/g, py: 'belok_kiri()  # turnLeft()' },
+            { js: /await turnRight\(\);?/g, py: 'belok_kanan()  # turnRight()' },
+            { js: /await collectStar\(\);?/g, py: 'ambil_bintang()  # collectStar()' },
+            { js: /await wait\((\d+)\);?/g, py: 'tunggu($1)  # wait($1)' },
+            // Pixel art commands
+            { js: /await draw\(\);?/g, py: 'gambar()  # draw()' },
+            { js: /await setColor\(['"]#ff0000['"]\);?/g, py: 'warna("merah")' },
+            { js: /await setColor\(['"]#00ff00['"]\);?/g, py: 'warna("hijau")' },
+            { js: /await setColor\(['"]#0000ff['"]\);?/g, py: 'warna("biru")' },
+            { js: /await setColor\(['"]#ffff00['"]\);?/g, py: 'warna("kuning")' },
+            { js: /await setColor\(['"]#ff8800['"]\);?/g, py: 'warna("oranye")' },
+            { js: /await setColor\(['"]#9900ff['"]\);?/g, py: 'warna("ungu")' },
+            { js: /await setColor\(['"]#000000['"]\);?/g, py: 'warna("hitam")' },
+            { js: /await setColor\(['"]#ffffff['"]\);?/g, py: 'warna("putih")' },
+            { js: /await setColor\(['"](#[a-fA-F0-9]+)['"]\);?/g, py: 'warna("merah")  # gunakan: merah, hijau, biru, kuning, oranye, ungu, hitam, putih' },
+            { js: /await moveRight\(\);?/g, py: 'geser_kanan()  # moveRight()' },
+            { js: /await moveDown\(\);?/g, py: 'geser_bawah()  # moveDown()' },
+            // Animation commands
+            { js: /await moveUp\((\d+)\);?/g, py: 'gerak_atas($1)  # moveUp($1)' },
+            { js: /await jump\(\);?/g, py: 'lompat()  # jump()' },
+            { js: /await rotate\((\d+)\);?/g, py: 'putar($1)  # rotate($1)' },
+            { js: /await scale\((\d+)\);?/g, py: 'skala($1)  # scale($1)' },
+            { js: /await say\(['"](.+?)['"]\);?/g, py: 'katakan("$1")  # say("$1")' },
+            // Music commands
+            { js: /await playNote\(['"](.+?)['"]\);?/g, py: 'mainkan_nada("$1")  # playNote("$1")' },
+            { js: /await rest\((\d+)\);?/g, py: 'istirahat($1)  # rest($1)' },
+            // Math commands
+            { js: /console\.log\((.+?)\);?/g, py: 'print($1)' },
+        ];
+
+        // Handle loops
+        let processedCode = jsCode;
+
+        // Convert for loops
+        const loopMatch = processedCode.match(/for \(let i = 0; i < (\d+); i\+\+\) \{([^}]+)\}/g);
+        if (loopMatch) {
+            loopMatch.forEach(loop => {
+                const countMatch = loop.match(/i < (\d+)/);
+                const count = countMatch ? countMatch[1] : '1';
+                const bodyMatch = loop.match(/\{([^}]+)\}/);
+                let body = bodyMatch ? bodyMatch[1] : '';
+
+                // Convert body commands
+                conversions.forEach(conv => {
+                    body = body.replace(conv.js, conv.py);
+                });
+
+                pythonHint += `for i in range(${count}):\n`;
+                const lines = body.trim().split('\n').filter(l => l.trim());
+                lines.forEach(line => {
+                    pythonHint += `    ${line.trim()}\n`;
+                });
+                pythonHint += '\n';
+            });
+
+            // Remove loops from processing
+            processedCode = processedCode.replace(/for \(let i = 0; i < \d+; i\+\+\) \{[^}]+\}/g, '');
+        }
+
+        // Convert remaining single commands
+        conversions.forEach(conv => {
+            const matches = processedCode.match(conv.js);
+            if (matches) {
+                matches.forEach(() => {
+                    pythonHint += processedCode.replace(conv.js, conv.py).trim() + '\n';
+                });
+            }
+        });
+
+        // If no commands found, show the template with hint
+        if (pythonHint === '# 🎯 Kode Python berdasarkan blok kamu:\n\n') {
+            return pythonCodeTemplate + '\n# Tambahkan blok di mode Blok untuk melihat contoh kode Python';
+        }
+
+        return pythonHint;
+    }, [pythonCodeTemplate]);
+
     // Handle mode change
     const handleModeChange = useCallback((newMode: WorkspaceMode) => {
         setMode(newMode);
@@ -80,9 +169,16 @@ export default function DualModeWorkspace({
         if (newMode === 'block') {
             onCodeChange(blocklyCode);
         } else {
-            onCodeChange(pythonCode);
+            // When switching to code mode, generate Python hints from blocks if available
+            if (blocklyCode && blocklyCode.trim() !== '') {
+                const pythonHintCode = convertBlockCodeToPython(blocklyCode);
+                setPythonCode(pythonHintCode);
+                onCodeChange(pythonHintCode);
+            } else {
+                onCodeChange(pythonCode);
+            }
         }
-    }, [blocklyCode, pythonCode, onCodeChange, onModeChange]);
+    }, [blocklyCode, pythonCode, onCodeChange, onModeChange, convertBlockCodeToPython]);
 
     // Reset Python code when starter code changes
     useEffect(() => {
@@ -101,8 +197,8 @@ export default function DualModeWorkspace({
                         <button
                             onClick={() => handleModeChange('block')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${mode === 'block'
-                                    ? 'bg-[#6c5ce7] text-white shadow-lg shadow-purple-500/30'
-                                    : 'bg-[#252547] text-gray-400 hover:bg-[#2a2a50] hover:text-white'
+                                ? 'bg-[#6c5ce7] text-white shadow-lg shadow-purple-500/30'
+                                : 'bg-[#252547] text-gray-400 hover:bg-[#2a2a50] hover:text-white'
                                 }`}
                         >
                             <span>🧩</span>
@@ -113,8 +209,8 @@ export default function DualModeWorkspace({
                         <button
                             onClick={() => handleModeChange('code')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${mode === 'code'
-                                    ? 'bg-[#00b894] text-white shadow-lg shadow-green-500/30'
-                                    : 'bg-[#252547] text-gray-400 hover:bg-[#2a2a50] hover:text-white'
+                                ? 'bg-[#00b894] text-white shadow-lg shadow-green-500/30'
+                                : 'bg-[#252547] text-gray-400 hover:bg-[#2a2a50] hover:text-white'
                                 }`}
                         >
                             <span>💻</span>
@@ -127,10 +223,10 @@ export default function DualModeWorkspace({
                         <div className="flex items-center gap-2 text-sm">
                             <span
                                 className={`w-2 h-2 rounded-full ${isJudge0Available === null
-                                        ? 'bg-yellow-500 animate-pulse'
-                                        : isJudge0Available
-                                            ? 'bg-green-500'
-                                            : 'bg-red-500'
+                                    ? 'bg-yellow-500 animate-pulse'
+                                    : isJudge0Available
+                                        ? 'bg-green-500'
+                                        : 'bg-red-500'
                                     }`}
                             />
                             <span className="text-gray-400">

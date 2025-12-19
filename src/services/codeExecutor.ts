@@ -340,41 +340,70 @@ const PYTHON_PIXEL_TEMPLATE = `# BlockyKids Pixel Art API
 import json
 
 _actions = []
-_color = "#ff0000"
+_color = "merah"
+
+# Daftar warna yang tersedia
+WARNA = {
+    "merah": "#ff0000",
+    "hijau": "#00ff00", 
+    "biru": "#0000ff",
+    "kuning": "#ffff00",
+    "oranye": "#ff8800",
+    "ungu": "#9900ff",
+    "pink": "#ff69b4",
+    "coklat": "#8b4513",
+    "hitam": "#000000",
+    "putih": "#ffffff",
+    "abu": "#808080",
+}
 
 def gambar():
-    _actions.append({"type": "draw", "color": _color})
+    """Gambar pixel di posisi saat ini"""
+    color_hex = WARNA.get(_color, "#ff0000")
+    _actions.append({"type": "draw", "color": color_hex})
 
 def geser_kanan():
+    """Geser kursor ke kanan"""
     _actions.append({"type": "move_right"})
 
 def geser_bawah():
+    """Geser kursor ke bawah"""
     _actions.append({"type": "move_down"})
 
-def warna(c):
+def warna(nama_warna):
+    """
+    Pilih warna. Warna yang tersedia:
+    merah, hijau, biru, kuning, oranye, ungu, pink, coklat, hitam, putih, abu
+    """
     global _color
-    _color = c
-    _actions.append({"type": "set_color", "color": c})
+    nama = nama_warna.lower()
+    if nama in WARNA:
+        _color = nama
+        _actions.append({"type": "set_color", "color": WARNA[nama]})
+    else:
+        print(f"Warna '{nama_warna}' tidak dikenal! Gunakan: merah, hijau, biru, kuning, oranye, ungu, pink, coklat, hitam, putih, abu")
 
-# Aliases
+# English aliases
 draw = gambar
 move_right = geser_kanan
 move_down = geser_bawah
 set_color = warna
+setColor = warna
+moveRight = geser_kanan
+moveDown = geser_bawah
 
-# Color shortcuts
-def merah(): warna("#ff0000")
-def hijau(): warna("#00ff00")
-def biru(): warna("#0000ff")
-def kuning(): warna("#ffff00")
-def hitam(): warna("#000000")
-def putih(): warna("#ffffff")
-
-# camelCase aliases (Blockly compatibility)
-pixelDraw = gambar
-pixelMoveRight = geser_kanan
-pixelMoveDown = geser_bawah
-pixelSetColor = warna
+# Shortcut warna (langsung set warna)
+def merah(): warna("merah")
+def hijau(): warna("hijau")
+def biru(): warna("biru")
+def kuning(): warna("kuning")
+def oranye(): warna("oranye")
+def ungu(): warna("ungu")
+def pink(): warna("pink")
+def coklat(): warna("coklat")
+def hitam(): warna("hitam")
+def putih(): warna("putih")
+def abu(): warna("abu")
 
 # ========== KODE KAMU ==========
 
