@@ -15,6 +15,7 @@ import { executePythonAnimationCode, AnimationAction } from '@/services/codeExec
 interface AnimationPhaseProps {
     onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+    initialLevel?: ExtendedAnimationLevel;
 }
 
 // Extended AnimationLevel with allowedBlocks
@@ -124,8 +125,9 @@ const EXTENDED_LEVELS: ExtendedAnimationLevel[] = [
     },
 ];
 
-export default function AnimationPhase({ onLevelComplete, showToast }: AnimationPhaseProps) {
-    const [levels] = useState(EXTENDED_LEVELS);
+export default function AnimationPhase({ onLevelComplete, showToast, initialLevel }: AnimationPhaseProps) {
+    const [levels] = useState(initialLevel ? [initialLevel] : EXTENDED_LEVELS);
+    const isSingleLevelMode = !!initialLevel;
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [sprites, setSprites] = useState<Sprite[]>([]);
@@ -330,12 +332,14 @@ export default function AnimationPhase({ onLevelComplete, showToast }: Animation
     }, [currentLevel, loadLevel]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_1fr] gap-5 min-h-[calc(100vh-94px)]">
-            {/* Sidebar */}
-            <div className="bg-[#252547] rounded-2xl p-4 overflow-y-auto">
-                <h3 className="font-semibold mb-4">🎬 Animasi</h3>
-                <LevelList levels={levels} currentLevel={currentLevel} onSelect={loadLevel} />
-            </div>
+        <div className={`grid grid-cols-1 ${isSingleLevelMode ? 'lg:grid-cols-2' : 'lg:grid-cols-[220px_1fr_1fr]'} gap-5 min-h-[calc(100vh-94px)]`}>
+            {/* Sidebar - only show when not in single level mode */}
+            {!isSingleLevelMode && (
+                <div className="bg-[#252547] rounded-2xl p-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-4">🎬 Animasi</h3>
+                    <LevelList levels={levels} currentLevel={currentLevel} onSelect={loadLevel} />
+                </div>
+            )}
 
             {/* Main Stage */}
             <div className="bg-[#252547] rounded-2xl p-5 flex flex-col">

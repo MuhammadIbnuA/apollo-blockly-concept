@@ -58,15 +58,15 @@ export default function SharePageContent({ phase, levelData, challengeTitle }: S
         case 'building':
             return <BuildingPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'pixel-art':
-            return <PixelArtPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+            return <PixelArtPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'animation':
-            return <AnimationPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+            return <AnimationPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'math':
-            return <MathPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+            return <MathPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'music':
-            return <MusicPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+            return <MusicPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'robot':
-            return <RobotPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+            return <RobotPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         default:
             return (
                 <div className="text-center py-20">

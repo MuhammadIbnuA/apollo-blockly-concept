@@ -15,6 +15,7 @@ import { executePythonPixelCode, PixelAction } from '@/services/codeExecutor';
 interface PixelArtPhaseProps {
     onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+    initialLevel?: ExtendedPixelArtLevel;
 }
 
 const GRID_SIZE = 8;
@@ -100,8 +101,9 @@ const EXTENDED_LEVELS: ExtendedPixelArtLevel[] = [
     },
 ];
 
-export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPhaseProps) {
-    const [levels] = useState(EXTENDED_LEVELS);
+export default function PixelArtPhase({ onLevelComplete, showToast, initialLevel }: PixelArtPhaseProps) {
+    const [levels] = useState(initialLevel ? [initialLevel] : EXTENDED_LEVELS);
+    const isSingleLevelMode = !!initialLevel;
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [grid, setGrid] = useState<string[][]>(() =>
@@ -254,12 +256,14 @@ export default function PixelArtPhase({ onLevelComplete, showToast }: PixelArtPh
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_1fr] gap-5 min-h-[calc(100vh-94px)]">
-            {/* Sidebar */}
-            <div className="bg-[#252547] rounded-2xl p-4 overflow-y-auto">
-                <h3 className="font-semibold mb-4">🎨 Pixel Art</h3>
-                <LevelList levels={levels} currentLevel={currentLevel} onSelect={(idx) => { setCurrentLevel(idx); resetGrid(); }} />
-            </div>
+        <div className={`grid grid-cols-1 ${isSingleLevelMode ? 'lg:grid-cols-2' : 'lg:grid-cols-[220px_1fr_1fr]'} gap-5 min-h-[calc(100vh-94px)]`}>
+            {/* Sidebar - only show when not in single level mode */}
+            {!isSingleLevelMode && (
+                <div className="bg-[#252547] rounded-2xl p-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-4">🎨 Pixel Art</h3>
+                    <LevelList levels={levels} currentLevel={currentLevel} onSelect={(idx) => { setCurrentLevel(idx); resetGrid(); }} />
+                </div>
+            )}
 
             {/* Main */}
             <div className="bg-[#252547] rounded-2xl p-5 flex flex-col">
