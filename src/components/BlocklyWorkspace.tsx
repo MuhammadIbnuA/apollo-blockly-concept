@@ -26,14 +26,12 @@ interface BlocklyWorkspaceProps {
     };
     onWorkspaceChange?: (workspace: any) => void;
     onCodeChange?: (code: string) => void;
-    maxBlocks?: number;
 }
 
 export default function BlocklyWorkspace({
     toolbox,
     onWorkspaceChange,
     onCodeChange,
-    maxBlocks,
 }: BlocklyWorkspaceProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const workspaceRef = useRef<any>(null);
@@ -88,7 +86,6 @@ export default function BlocklyWorkspace({
             workspaceRef.current = Blockly.inject(containerRef.current, {
                 toolbox,
                 theme: Blockly.Themes.Dark,
-                maxBlocks: maxBlocks || Infinity, // Enforce block limit
                 grid: {
                     spacing: 20,
                     length: 3,

@@ -376,22 +376,12 @@ def warna(nama_warna):
     merah, hijau, biru, kuning, oranye, ungu, pink, coklat, hitam, putih, abu
     """
     global _color
-    
-    # Handle if user passes function definition (e.g. setColor(hijau))
-    if callable(nama_warna):
-        nama_warna()
-        return
-
-    # Handle string input
-    try:
-        nama = str(nama_warna).lower()
-        if nama in WARNA:
-            _color = nama
-            _actions.append({"type": "set_color", "color": WARNA[nama]})
-        else:
-            print(f"Warna '{nama_warna}' tidak dikenal! Gunakan: merah, hijau, biru, kuning, oranye, ungu, pink, coklat, hitam, putih, abu")
-    except Exception as e:
-        print(f"Error setting color: {e}")
+    nama = nama_warna.lower()
+    if nama in WARNA:
+        _color = nama
+        _actions.append({"type": "set_color", "color": WARNA[nama]})
+    else:
+        print(f"Warna '{nama_warna}' tidak dikenal! Gunakan: merah, hijau, biru, kuning, oranye, ungu, pink, coklat, hitam, putih, abu")
 
 # English aliases
 draw = gambar
