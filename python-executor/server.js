@@ -93,8 +93,8 @@ function executePython(code) {
         try {
             fs.writeFileSync(tempFile, code, 'utf-8');
 
-            // Try python3 first, fallback to python
-            const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+            // Try 'python' first (works on Replit/most systems), fallback to 'python3'
+            const pythonCmd = 'python';
             const python = spawn(pythonCmd, [tempFile], {
                 timeout: 10000,
             });
