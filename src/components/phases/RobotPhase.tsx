@@ -172,11 +172,24 @@ export default function RobotPhase({ onLevelComplete, showToast, initialLevel }:
     const [isRunning, setIsRunning] = useState(false);
     const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
 
-    const level = levels[currentLevel];
+    const level = useMemo(() => {
+        const lvl = levels[currentLevel];
+        // Provide defaults for custom challenges that may not have all fields
+        return {
+            ...lvl,
+            width: lvl.width || 5,
+            height: lvl.height || 3,
+            grid: lvl.grid || Array(lvl.height || 3).fill(null).map(() => Array(lvl.width || 5).fill({ type: 'empty' })),
+            robot: lvl.robot || { x: 0, y: 1, direction: 'east' as Direction },
+            goal: lvl.goal || { x: 4, y: 1 },
+            stars: lvl.stars || [],
+        };
+    }, [levels, currentLevel]);
 
     // Generate dynamic toolbox based on current level's allowed blocks
     const currentToolbox = useMemo(() => {
-        return generateToolbox(level.allowedBlocks);
+        const blocks = level.allowedBlocks || ['move_forward', 'turn_left', 'turn_right', 'repeat_times', 'collect_star', 'wait'];
+        return generateToolbox(blocks);
     }, [level.allowedBlocks]);
 
     // Python code template
@@ -352,7 +365,7 @@ export default function RobotPhase({ onLevelComplete, showToast, initialLevel }:
             {/* Main */}
             <div className="bg-[#252547] rounded-2xl p-5 flex flex-col">
                 <div className="mb-4">
-                    <h3 className="text-lg font-semibold">Level {level.id}: {level.name}</h3>
+                    <h3 className="text-lg font-semibold">{isSingleLevelMode ? level.name : `Level ${level.id}: ${level.name}`}</h3>
                     <p className="text-gray-400">{level.description}</p>
                 </div>
 

@@ -58,6 +58,7 @@ export default function SharePageContent({ phase, levelData, challengeTitle }: S
         case 'building':
             return <BuildingPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'pixel-art':
+        case 'pixelart':
             return <PixelArtPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'animation':
             return <AnimationPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;

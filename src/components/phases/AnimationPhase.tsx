@@ -135,11 +135,20 @@ export default function AnimationPhase({ onLevelComplete, showToast, initialLeve
     const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
     const actionLogRef = useRef<string[]>([]);
 
-    const level = levels[currentLevel];
+    const level = useMemo(() => {
+        const lvl = levels[currentLevel];
+        // Provide defaults for custom challenges that may not have all fields
+        return {
+            ...lvl,
+            sprites: lvl.sprites || [{ id: 'cat', emoji: '🐱', x: 100, y: 150 }],
+            goal: lvl.goal || { type: 'free' as const },
+        };
+    }, [levels, currentLevel]);
 
     // Generate dynamic toolbox based on current level's allowed blocks
     const currentToolbox = useMemo(() => {
-        return generateToolbox(level.allowedBlocks);
+        const blocks = level.allowedBlocks || ['anim_move_right', 'anim_move_left', 'anim_move_up', 'anim_move_down', 'anim_jump', 'anim_rotate', 'anim_scale', 'anim_say', 'repeat_times', 'wait'];
+        return generateToolbox(blocks);
     }, [level.allowedBlocks]);
 
     // Python code template
@@ -344,7 +353,7 @@ export default function AnimationPhase({ onLevelComplete, showToast, initialLeve
             {/* Main Stage */}
             <div className="bg-[#252547] rounded-2xl p-5 flex flex-col">
                 <div className="mb-4">
-                    <h3 className="text-lg font-semibold">Level {level.id}: {level.name}</h3>
+                    <h3 className="text-lg font-semibold">{isSingleLevelMode ? level.name : `Level ${level.id}: ${level.name}`}</h3>
                     <p className="text-gray-400">{level.description}</p>
                 </div>
 

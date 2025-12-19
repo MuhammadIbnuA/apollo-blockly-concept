@@ -115,11 +115,20 @@ export default function PixelArtPhase({ onLevelComplete, showToast, initialLevel
     const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
     const drawnPixelsRef = useRef<Set<string>>(new Set());
 
-    const level = levels[currentLevel];
+    const level = useMemo(() => {
+        const lvl = levels[currentLevel];
+        // Provide defaults for custom challenges that may not have all fields
+        return {
+            ...lvl,
+            target: lvl.target || [],
+        };
+    }, [levels, currentLevel]);
 
     // Generate dynamic toolbox based on current level's allowed blocks
     const currentToolbox = useMemo(() => {
-        return generateToolbox(level.allowedBlocks);
+        // Use allowedBlocks from level, or default to all blocks for custom challenges
+        const blocks = level.allowedBlocks || ['pixel_set_color', 'pixel_draw', 'pixel_move_right', 'pixel_move_down', 'repeat_times'];
+        return generateToolbox(blocks);
     }, [level.allowedBlocks]);
 
     // Python code template
@@ -268,7 +277,7 @@ export default function PixelArtPhase({ onLevelComplete, showToast, initialLevel
             {/* Main */}
             <div className="bg-[#252547] rounded-2xl p-5 flex flex-col">
                 <div className="mb-4">
-                    <h3 className="text-lg font-semibold">Level {level.id}: {level.name}</h3>
+                    <h3 className="text-lg font-semibold">{isSingleLevelMode ? level.name : `Level ${level.id}: ${level.name}`}</h3>
                     <p className="text-gray-400">{level.description}</p>
                 </div>
 

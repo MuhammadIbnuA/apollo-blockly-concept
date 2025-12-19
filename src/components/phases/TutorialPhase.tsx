@@ -246,6 +246,7 @@ const DIRECTION_EMOJI: Record<Direction, string> = {
 
 export default function TutorialPhase({ onLevelComplete, showToast, initialLevel }: TutorialPhaseProps) {
     const [levels, setLevels] = useState<TutorialLevel[]>(initialLevel ? [initialLevel] : DEFAULT_LEVELS);
+    const isSingleLevelMode = !!initialLevel;
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
@@ -592,23 +593,25 @@ export default function TutorialPhase({ onLevelComplete, showToast, initialLevel
     }, [level.stars, collectedStars]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_1fr] gap-5 min-h-[calc(100vh-94px)]">
-            {/* Sidebar - Level List */}
-            <div className="bg-[#252547] rounded-2xl p-4 overflow-y-auto">
-                <h3 className="font-semibold mb-4">🎓 Tutorial</h3>
-                <LevelList
-                    levels={levels}
-                    currentLevel={currentLevel}
-                    onSelect={handleSelectLevel}
-                />
-            </div>
+        <div className={`grid grid-cols-1 ${isSingleLevelMode ? 'lg:grid-cols-2' : 'lg:grid-cols-[220px_1fr_1fr]'} gap-5 min-h-[calc(100vh-94px)]`}>
+            {/* Sidebar - Level List - hide in single level mode */}
+            {!isSingleLevelMode && (
+                <div className="bg-[#252547] rounded-2xl p-4 overflow-y-auto">
+                    <h3 className="font-semibold mb-4">🎓 Tutorial</h3>
+                    <LevelList
+                        levels={levels}
+                        currentLevel={currentLevel}
+                        onSelect={handleSelectLevel}
+                    />
+                </div>
+            )}
 
             {/* Main - Tutorial Stage */}
             <div className="bg-[#252547] rounded-2xl p-5 flex flex-col">
                 {/* Header */}
                 <div className="mb-4">
                     <h3 className="text-lg font-semibold">
-                        Level {level.id}: {level.name}
+                        {isSingleLevelMode ? level.name : `Level ${level.id}: ${level.name}`}
                     </h3>
                     <p className="text-gray-400">{level.description}</p>
                 </div>
