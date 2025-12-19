@@ -82,35 +82,59 @@ export default function DualModeWorkspace({
 
         // Replace JavaScript robot commands with Python equivalents
         const conversions = [
-            { js: /await moveForward\(\);?/g, py: 'maju()  # moveForward()' },
-            { js: /await turnLeft\(\);?/g, py: 'belok_kiri()  # turnLeft()' },
-            { js: /await turnRight\(\);?/g, py: 'belok_kanan()  # turnRight()' },
-            { js: /await collectStar\(\);?/g, py: 'ambil_bintang()  # collectStar()' },
-            { js: /await wait\((\d+)\);?/g, py: 'tunggu($1)  # wait($1)' },
-            // Pixel art commands
-            { js: /await draw\(\);?/g, py: 'gambar()  # draw()' },
-            { js: /await setColor\(['"]#ff0000['"]\);?/g, py: 'warna("merah")' },
-            { js: /await setColor\(['"]#00ff00['"]\);?/g, py: 'warna("hijau")' },
-            { js: /await setColor\(['"]#0000ff['"]\);?/g, py: 'warna("biru")' },
-            { js: /await setColor\(['"]#ffff00['"]\);?/g, py: 'warna("kuning")' },
-            { js: /await setColor\(['"]#ff8800['"]\);?/g, py: 'warna("oranye")' },
-            { js: /await setColor\(['"]#9900ff['"]\);?/g, py: 'warna("ungu")' },
-            { js: /await setColor\(['"]#000000['"]\);?/g, py: 'warna("hitam")' },
-            { js: /await setColor\(['"]#ffffff['"]\);?/g, py: 'warna("putih")' },
-            { js: /await setColor\(['"](#[a-fA-F0-9]+)['"]\);?/g, py: 'warna("merah")  # gunakan: merah, hijau, biru, kuning, oranye, ungu, hitam, putih' },
-            { js: /await moveRight\(\);?/g, py: 'geser_kanan()  # moveRight()' },
-            { js: /await moveDown\(\);?/g, py: 'geser_bawah()  # moveDown()' },
-            // Animation commands
-            { js: /await moveUp\((\d+)\);?/g, py: 'gerak_atas($1)  # moveUp($1)' },
-            { js: /await jump\(\);?/g, py: 'lompat()  # jump()' },
-            { js: /await rotate\((\d+)\);?/g, py: 'putar($1)  # rotate($1)' },
-            { js: /await scale\((\d+)\);?/g, py: 'skala($1)  # scale($1)' },
-            { js: /await say\(['"](.+?)['"]\);?/g, py: 'katakan("$1")  # say("$1")' },
-            // Music commands
-            { js: /await playNote\(['"](.+?)['"]\);?/g, py: 'mainkan_nada("$1")  # playNote("$1")' },
-            { js: /await rest\((\d+)\);?/g, py: 'istirahat($1)  # rest($1)' },
-            // Math commands
-            { js: /console\.log\((.+?)\);?/g, py: 'print($1)' },
+            // Robot Phase
+            { js: /await moveForward\(\);?/g, py: 'maju()  # gerak maju' },
+            { js: /await turnLeft\(\);?/g, py: 'belok_kiri()  # belok kiri' },
+            { js: /await turnRight\(\);?/g, py: 'belok_kanan()  # belok kanan' },
+            { js: /await collectStar\(\);?/g, py: 'ambil_bintang()  # ambil bintang' },
+            { js: /await wait\((\d+)\);?/g, py: 'tunggu($1)  # tunggu $1 detik' },
+
+            // Pixel Art Phase (Updated for pixel... prefix)
+            { js: /(?:await )?pixelDraw\(\);?/g, py: 'gambar()  # gambar pixel' },
+            { js: /(?:await )?draw\(\);?/g, py: 'gambar()  # gambar pixel' },
+            { js: /(?:await )?pixelSetColor\(['"](.+?)['"]\);?/g, py: 'warna("$1")  # ubah warna' },
+            { js: /(?:await )?setColor\(['"](.+?)['"]\);?/g, py: 'warna("$1")  # ubah warna' },
+            { js: /(?:await )?pixelMoveRight\(\);?/g, py: 'geser_kanan()  # geser kanan' },
+            { js: /(?:await )?moveRight\(\);?/g, py: 'geser_kanan()  # geser kanan' },
+            { js: /(?:await )?pixelMoveDown\(\);?/g, py: 'geser_bawah()  # geser bawah' },
+            { js: /(?:await )?moveDown\(\);?/g, py: 'geser_bawah()  # geser bawah' },
+
+            // Animation Phase (Updated for anim... prefix)
+            { js: /await animMoveRight\((\d+)\);?/g, py: 'gerak_kanan($1)  # gerak kanan $1 px' },
+            { js: /await animMoveLeft\((\d+)\);?/g, py: 'gerak_kiri($1)  # gerak kiri $1 px' },
+            { js: /await animMoveUp\((\d+)\);?/g, py: 'gerak_atas($1)  # gerak atas $1 px' },
+            { js: /await animMoveDown\((\d+)\);?/g, py: 'gerak_bawah($1)  # gerak bawah $1 px' },
+            { js: /await animJump\(\);?/g, py: 'lompat()  # melompat' },
+            { js: /await animRotate\((\d+)\);?/g, py: 'putar($1)  # putar $1 derajat' },
+            { js: /await animScale\((\d+)\);?/g, py: 'skala($1)  # ubah ukuran $1%' },
+            { js: /await animSay\(['"](.+?)['"]\);?/g, py: 'katakan("$1")  # katakan teks' },
+
+            // Legacy Animation (backwards compatibility)
+            { js: /await moveUp\((\d+)\);?/g, py: 'gerak_atas($1)  # gerak atas' },
+            { js: /await jump\(\);?/g, py: 'lompat()  # melompat' },
+            { js: /await rotate\((\d+)\);?/g, py: 'putar($1)  # putar' },
+            { js: /await scale\((\d+)\);?/g, py: 'skala($1)  # skala' },
+            { js: /await say\(['"](.+?)['"]\);?/g, py: 'katakan("$1")  # katakan' },
+
+            // Music Phase (Fixed: 'mainkan' matches codeExecutor definitions)
+            { js: /await musicPlayNote\(['"](.+?)['"]\);?/g, py: 'mainkan("$1")  # mainkan nada' },
+            { js: /await musicRest\((\d+)\);?/g, py: 'istirahat($1)  # diam $1 ketukan' },
+            { js: /await playNote\(['"](.+?)['"]\);?/g, py: 'mainkan("$1")  # mainkan nada' },
+            { js: /await rest\((\d+)\);?/g, py: 'istirahat($1)  # diam' },
+
+            // Building Phase (New conversions)
+            { js: /(?:await )?buildPlaceBlock\(\);?/g, py: 'taruh_blok()  # letakkan blok' },
+            { js: /(?:await )?buildRemoveBlock\(\);?/g, py: 'hapus_blok()  # hapus blok' },
+            { js: /(?:await )?buildMoveX\((\d+)\);?/g, py: 'gerak_x($1)  # gerak x' },
+            { js: /(?:await )?buildMoveY\((\d+)\);?/g, py: 'gerak_y($1)  # gerak y' },
+            { js: /(?:await )?buildMoveZ\((\d+)\);?/g, py: 'gerak_z($1)  # gerak z' },
+            { js: /(?:await )?buildSetColor\(['"](.+?)['"]\);?/g, py: 'warna("$1")  # ganti warna' },
+            { js: /(?:await )?buildGoto\((\d+),\s*(\d+),\s*(\d+)\);?/g, py: 'ke_posisi($1, $2, $3)  # pindah posisi' },
+
+            // Math Phase
+            { js: /mathPrint\((.+?)\);?/g, py: 'print($1)  # tampilkan nilai' },
+            { js: /mathSetVar\(['"](.+?)['"],\s*(.+?)\);?/g, py: '$1 = $2  # set variabel' },
+            { js: /console\.log\((.+?)\);?/g, py: 'print($1)  # tampilkan' },
         ];
 
         // Handle loops
