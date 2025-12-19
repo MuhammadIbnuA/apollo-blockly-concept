@@ -28,6 +28,7 @@ export interface BaseLevel {
     difficulty: Difficulty;
     description: string;
     hint: string;
+    maxBlocks?: number; // Batas jumlah blok (opsional)
 }
 
 // Robot Phase Level

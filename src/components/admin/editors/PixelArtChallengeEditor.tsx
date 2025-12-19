@@ -69,8 +69,8 @@ export default function PixelArtChallengeEditor({ level, onChange }: PixelArtCha
                                     key={i}
                                     onClick={() => handlePixelClick(x, y)}
                                     className={`w-8 h-8 rounded-sm border transition-all ${isActive
-                                            ? 'bg-red-500 border-red-400'
-                                            : 'bg-[#2d2d5a] border-white/5 hover:bg-white/10'
+                                        ? 'bg-red-500 border-red-400'
+                                        : 'bg-[#2d2d5a] border-white/5 hover:bg-white/10'
                                         }`}
                                 />
                             );
@@ -103,6 +103,19 @@ export default function PixelArtChallengeEditor({ level, onChange }: PixelArtCha
                     ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Kosongkan untuk mengizinkan semua blok</p>
+            </div>
+
+            {/* Max Blocks Limit */}
+            <div>
+                <label className="block text-sm text-gray-400 mb-2">🛑 Batas Jumlah Blok (Opsional)</label>
+                <input
+                    type="number"
+                    min="1"
+                    value={level.maxBlocks || ''}
+                    onChange={(e) => onChange({ ...level, maxBlocks: e.target.value ? parseInt(e.target.value) : undefined })}
+                    placeholder="Contoh: 10 (Kosongkan jika tidak ada batas)"
+                    className="w-full bg-[#1a1a35] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                />
             </div>
         </div>
     );

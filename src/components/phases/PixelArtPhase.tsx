@@ -378,6 +378,7 @@ export default function PixelArtPhase({ onLevelComplete, showToast, initialLevel
                         onModeChange={setWorkspaceMode}
                         initialMode="block"
                         pythonCodeTemplate={pythonTemplate}
+                        maxBlocks={level.maxBlocks}
                     />
                 </div>
             </div>

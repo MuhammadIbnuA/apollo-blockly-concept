@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import BlocklyWorkspace from './BlocklyWorkspace';
 import CodeEditor from './CodeEditor';
 import { checkJudge0Health } from '@/services/judge0';
@@ -30,6 +30,7 @@ export interface DualModeWorkspaceProps {
     starterPythonCode?: string;
     pythonCodeTemplate?: string;
     showModeToggle?: boolean;
+    maxBlocks?: number;
 }
 
 export default function DualModeWorkspace({
@@ -40,11 +41,13 @@ export default function DualModeWorkspace({
     starterPythonCode = '',
     pythonCodeTemplate = '# Write your Python code here\n\n',
     showModeToggle = true,
+    maxBlocks,
 }: DualModeWorkspaceProps) {
     const [mode, setMode] = useState<WorkspaceMode>(initialMode);
     const [blocklyCode, setBlocklyCode] = useState('');
     const [pythonCode, setPythonCode] = useState(starterPythonCode || pythonCodeTemplate);
     const [isJudge0Available, setIsJudge0Available] = useState<boolean | null>(null);
+    const workspaceRef = useRef<any>(null);
 
     // Check Judge0 availability on mount
     useEffect(() => {
@@ -88,18 +91,12 @@ export default function DualModeWorkspace({
             { js: /await collectStar\(\);?/g, py: 'ambil_bintang()  # collectStar()' },
             { js: /await wait\((\d+)\);?/g, py: 'tunggu($1)  # wait($1)' },
             // Pixel art commands
+            { js: /pixelDraw\(\);?/g, py: 'gambar()  # draw()' },
+            { js: /pixelSetColor\(['"](.+?)['"]\);?/g, py: 'warna("$1")' },
+            { js: /pixelMoveRight\(\);?/g, py: 'geser_kanan()  # moveRight()' },
+            { js: /pixelMoveDown\(\);?/g, py: 'geser_bawah()  # moveDown()' },
+            // Legacy/Robot commands
             { js: /await draw\(\);?/g, py: 'gambar()  # draw()' },
-            { js: /await setColor\(['"]#ff0000['"]\);?/g, py: 'warna("merah")' },
-            { js: /await setColor\(['"]#00ff00['"]\);?/g, py: 'warna("hijau")' },
-            { js: /await setColor\(['"]#0000ff['"]\);?/g, py: 'warna("biru")' },
-            { js: /await setColor\(['"]#ffff00['"]\);?/g, py: 'warna("kuning")' },
-            { js: /await setColor\(['"]#ff8800['"]\);?/g, py: 'warna("oranye")' },
-            { js: /await setColor\(['"]#9900ff['"]\);?/g, py: 'warna("ungu")' },
-            { js: /await setColor\(['"]#000000['"]\);?/g, py: 'warna("hitam")' },
-            { js: /await setColor\(['"]#ffffff['"]\);?/g, py: 'warna("putih")' },
-            { js: /await setColor\(['"](#[a-fA-F0-9]+)['"]\);?/g, py: 'warna("merah")  # gunakan: merah, hijau, biru, kuning, oranye, ungu, hitam, putih' },
-            { js: /await moveRight\(\);?/g, py: 'geser_kanan()  # moveRight()' },
-            { js: /await moveDown\(\);?/g, py: 'geser_bawah()  # moveDown()' },
             // Animation commands
             { js: /await moveUp\((\d+)\);?/g, py: 'gerak_atas($1)  # moveUp($1)' },
             { js: /await jump\(\);?/g, py: 'lompat()  # jump()' },
@@ -251,6 +248,14 @@ export default function DualModeWorkspace({
                     <BlocklyWorkspace
                         toolbox={toolbox}
                         onCodeChange={handleBlocklyCodeChange}
+                        onWorkspaceChange={(ws) => {
+                            workspaceRef.current = ws;
+                            // Just update ref, code change handled by onCodeChange prop passed to BlocklyWorkspace
+                            // Wait, BlocklyWorkspace actually calls onCodeChange already.
+                            // But here we might want to capture ws reference if needed.
+                            // Actually setBlocklyCode is called in handleBlocklyCodeChange which is passed to onCodeChange.
+                        }}
+                        maxBlocks={maxBlocks}
                     />
                 </div>
 
