@@ -90,6 +90,26 @@ model CustomChallenge {
   isPublic    Boolean  @default(false)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  sessions    ChallengeSession[]
 
   @@map("custom_challenges")
+}
+
+// Track student attempts for statistics (Kahoot-style)
+model ChallengeSession {
+  id            String    @id @default(cuid())
+  challengeId   String    @map("challenge_id")
+  studentName   String    @map("student_name")
+  mode          String    // "block" or "code"
+  blocksUsed    Int       @default(0) @map("blocks_used")
+  runCount      Int       @default(0) @map("run_count")
+  timeElapsed   Int       @default(0) @map("time_elapsed") // seconds
+  completed     Boolean   @default(false)
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  
+  challenge     CustomChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@map("challenge_sessions")
 }

@@ -156,6 +156,21 @@ export default function PixelArtPhase({ onLevelComplete, showToast, initialLevel
         let cx = 0, cy = 0;
         let color = '#ff0000';
 
+        // Color name to hex mapping
+        const COLOR_MAP: Record<string, string> = {
+            merah: '#ff0000',
+            hijau: '#00ff00',
+            biru: '#0000ff',
+            kuning: '#ffff00',
+            oranye: '#ff8800',
+            ungu: '#9900ff',
+            pink: '#ff69b4',
+            coklat: '#8b4513',
+            hitam: '#000000',
+            putih: '#ffffff',
+            abu: '#808080',
+        };
+
         const pixelDraw = () => {
             if (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
                 tempGrid[cy][cx] = color;
@@ -172,7 +187,12 @@ export default function PixelArtPhase({ onLevelComplete, showToast, initialLevel
         };
 
         const pixelSetColor = (c: string) => {
-            color = c;
+            // Support both hex codes and Indonesian color names
+            if (c.startsWith('#')) {
+                color = c;
+            } else {
+                color = COLOR_MAP[c.toLowerCase()] || '#ff0000';
+            }
         };
 
         try {

@@ -341,16 +341,17 @@ function defineCustomBlocks() {
             this.appendDummyInput()
                 .appendField('🎨 Warna')
                 .appendField(new Blockly.FieldDropdown([
-                    ['🔴 Merah', '#ff0000'],
-                    ['🟠 Oranye', '#ff8800'],
-                    ['🟡 Kuning', '#ffff00'],
-                    ['🟢 Hijau', '#00ff00'],
-                    ['🔵 Biru', '#0088ff'],
-                    ['🟣 Ungu', '#8800ff'],
-                    ['⚫ Hitam', '#000000'],
-                    ['⚪ Putih', '#ffffff'],
-                    ['🟤 Coklat', '#8B4513'],
-                    ['💗 Pink', '#ff69b4']
+                    ['🔴 Merah', 'merah'],
+                    ['🟠 Oranye', 'oranye'],
+                    ['🟡 Kuning', 'kuning'],
+                    ['🟢 Hijau', 'hijau'],
+                    ['🔵 Biru', 'biru'],
+                    ['🟣 Ungu', 'ungu'],
+                    ['⚫ Hitam', 'hitam'],
+                    ['⚪ Putih', 'putih'],
+                    ['🟤 Coklat', 'coklat'],
+                    ['💗 Pink', 'pink'],
+                    ['⬜ Abu-abu', 'abu']
                 ]), 'COLOR');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);

@@ -54,6 +54,7 @@ export default async function SharePage({ params }: SharePageProps) {
                         phase={challenge.phase}
                         levelData={levelData}
                         challengeTitle={challenge.title}
+                        challengeId={challenge.id}
                     />
                 </div>
             </main>
