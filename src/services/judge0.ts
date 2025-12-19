@@ -1,11 +1,11 @@
 /**
  * BlockyKids - Judge0 API Service
  * Service untuk code execution menggunakan self-hosted Judge0
+ * Uses proxy API route to avoid mixed content (HTTPS → HTTP) issues
  */
 
-// Configuration for Judge0 API
-// Uses self-hosted Judge0 by default, can override with NEXT_PUBLIC_JUDGE0_URL env var
-const JUDGE0_API_URL = process.env.NEXT_PUBLIC_JUDGE0_URL || 'http://129.212.236.32:2358';
+// API proxy endpoint (uses Next.js API route to proxy to Judge0)
+const JUDGE0_PROXY_URL = '/api/judge0';
 
 // Language IDs in Judge0
 export const LANGUAGE_IDS = {
@@ -54,7 +54,7 @@ export async function submitCode(
     language: LanguageId = 'python3',
     stdin?: string
 ): Promise<string> {
-    const response = await fetch(`${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=false`, {
+    const response = await fetch(`${JUDGE0_PROXY_URL}?endpoint=submissions&base64_encoded=true&wait=false`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ export async function submitCode(
  */
 export async function getSubmissionResult(token: string): Promise<SubmissionResult> {
     const response = await fetch(
-        `${JUDGE0_API_URL}/submissions/${token}?base64_encoded=true&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code`,
+        `${JUDGE0_PROXY_URL}?endpoint=submissions/${token}&base64_encoded=true&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code`,
         {
             method: 'GET',
             headers: {
@@ -134,8 +134,8 @@ export async function runCode(
     stdin?: string
 ): Promise<ExecutionResult> {
     try {
-        // Use synchronous wait=true mode for compatibility with local Python executor
-        const response = await fetch(`${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=true`, {
+        // Use synchronous wait=true mode via proxy
+        const response = await fetch(`${JUDGE0_PROXY_URL}?endpoint=submissions&base64_encoded=true&wait=true`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -217,7 +217,7 @@ export async function runCode(
  */
 export async function checkJudge0Health(): Promise<boolean> {
     try {
-        const response = await fetch(`${JUDGE0_API_URL}/about`, {
+        const response = await fetch(`${JUDGE0_PROXY_URL}?endpoint=about`, {
             method: 'GET',
             signal: AbortSignal.timeout(5000),
         });
