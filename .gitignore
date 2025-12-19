@@ -41,14 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 # Unused/Development Files
-# Judge0 Docker setup (replaced by python-executor)
+# Judge0 Docker setup (for local testing)
 /judge0/
-
-# Monaco Judge0 example project
-/monaco-judge0/
 
 # Docker installer script
 get-docker.sh
-
-# Python executor dependencies
-/python-executor/node_modules/
