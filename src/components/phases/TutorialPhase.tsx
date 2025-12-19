@@ -244,6 +244,22 @@ const DIRECTION_EMOJI: Record<Direction, string> = {
     right: '➡️',
 };
 
+// Indonesian direction labels
+const DIRECTION_LABELS: Record<Direction, string> = {
+    up: 'Atas',
+    down: 'Bawah',
+    left: 'Kiri',
+    right: 'Kanan',
+};
+
+// Rotation degrees for robot to face direction (robot emoji default faces right)
+const DIRECTION_ROTATION: Record<Direction, number> = {
+    up: -90,    // Face up
+    down: 90,   // Face down
+    left: 180,  // Face left
+    right: 0,   // Face right (default)
+};
+
 export default function TutorialPhase({ onLevelComplete, showToast, initialLevel }: TutorialPhaseProps) {
     const [levels, setLevels] = useState<TutorialLevel[]>(initialLevel ? [initialLevel] : DEFAULT_LEVELS);
     const isSingleLevelMode = !!initialLevel;
@@ -650,8 +666,7 @@ export default function TutorialPhase({ onLevelComplete, showToast, initialLevel
                                     >
                                         {isRobot && (
                                             <div className={`flex flex-col items-center justify-center ${isRunning ? 'animate-pulse' : 'animate-bounce'}`}>
-                                                <span className="text-2xl leading-none">🤖</span>
-                                                <span className="text-xs leading-none -mt-1">{DIRECTION_EMOJI[robotDirection]}</span>
+                                                <span className="text-2xl leading-none" style={{ transform: `rotate(${DIRECTION_ROTATION[robotDirection]}deg)`, display: 'inline-block' }}>🤖</span>
                                             </div>
                                         )}
                                         {isGoal && !isRobot && <span className="text-2xl">🏁</span>}

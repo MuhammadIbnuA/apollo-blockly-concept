@@ -27,6 +27,22 @@ const DIRECTION_ARROWS: Record<Direction, string> = {
     west: '⬅️',
 };
 
+// Indonesian direction labels
+const DIRECTION_LABELS: Record<Direction, string> = {
+    north: 'Utara',
+    east: 'Timur',
+    south: 'Selatan',
+    west: 'Barat',
+};
+
+// Rotation degrees for robot to face direction (robot emoji default faces right/east)
+const DIRECTION_ROTATION: Record<Direction, number> = {
+    north: -90,   // Face up
+    east: 0,      // Face right (default)
+    south: 90,    // Face down
+    west: 180,    // Face left
+};
+
 const DEFAULT_LEVELS: RobotLevel[] = [
     {
         id: 1, name: 'Langkah Pertama', difficulty: 'easy',
@@ -388,7 +404,7 @@ export default function RobotPhase({ onLevelComplete, showToast, initialLevel }:
                                             className="w-12 h-12 bg-[#2d2d5a] rounded flex items-center justify-center text-2xl"
                                         >
                                             {isRobot && (
-                                                <span className="animate-bounce" style={{ transform: `rotate(${robotDir === 'north' ? -90 : robotDir === 'south' ? 90 : robotDir === 'west' ? 180 : 0}deg)` }}>
+                                                <span className="animate-bounce" style={{ transform: `rotate(${DIRECTION_ROTATION[robotDir]}deg)` }}>
                                                     🤖
                                                 </span>
                                             )}
@@ -405,7 +421,7 @@ export default function RobotPhase({ onLevelComplete, showToast, initialLevel }:
                 {/* Stats */}
                 <div className="flex justify-center gap-4 my-2 text-sm text-gray-400">
                     <span>⭐ {collectedStars.size}/{level.stars.length}</span>
-                    <span>🧭 {DIRECTION_ARROWS[robotDir]} {robotDir}</span>
+                    <span>🧭 {DIRECTION_ARROWS[robotDir]} Hadap {DIRECTION_LABELS[robotDir]}</span>
                 </div>
 
                 <div className="flex gap-3 justify-center mt-2">
