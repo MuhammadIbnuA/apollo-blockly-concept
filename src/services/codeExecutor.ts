@@ -111,7 +111,7 @@ export async function executePythonRobotCode(userCode: string): Promise<PythonEx
     }
 }
 
-export function getTutorialPythonTemplate(levelId: number, levelName: string, instruction: string): string {
+export function getTutorialPythonTemplate(levelId: number | string, levelName: string, instruction: string): string {
     return `# Level ${levelId}: ${levelName}
 # ${instruction}
 
@@ -409,4 +409,160 @@ export async function executePythonPixelCode(userCode: string): Promise<PixelExe
     } catch (error) {
         return { success: false, actions: [], error: error instanceof Error ? error.message : 'Error' };
     }
+}
+
+// ========== BUILDING PHASE ==========
+
+export interface BuildingAction {
+    type: 'place' | 'remove' | 'move_x' | 'move_y' | 'move_z' | 'goto' | 'set_color';
+    x?: number;
+    y?: number;
+    z?: number;
+    color?: string;
+}
+
+export interface BuildingExecutionResult {
+    success: boolean;
+    actions: BuildingAction[];
+    error?: string;
+}
+
+const PYTHON_BUILDING_TEMPLATE = `# BlockyKids Building API
+import json
+
+_actions = []
+_color = "#e74c3c"
+
+def taruh_blok():
+    """Letakkan blok di posisi saat ini"""
+    _actions.append({"type": "place", "color": _color})
+
+def hapus_blok():
+    """Hapus blok di posisi saat ini"""
+    _actions.append({"type": "remove"})
+
+def gerak_x(jarak=1):
+    """Gerakkan kursor ke kiri/kanan"""
+    _actions.append({"type": "move_x", "x": jarak})
+
+def gerak_y(jarak=1):
+    """Gerakkan kursor ke atas/bawah (tinggi)"""
+    _actions.append({"type": "move_y", "y": jarak})
+
+def gerak_z(jarak=1):
+    """Gerakkan kursor ke depan/belakang"""
+    _actions.append({"type": "move_z", "z": jarak})
+
+def ke_posisi(x, y, z):
+    """Pindah ke posisi tertentu"""
+    _actions.append({"type": "goto", "x": x, "y": y, "z": z})
+
+def warna(c):
+    """Pilih warna blok"""
+    global _color
+    _color = c
+    _actions.append({"type": "set_color", "color": c})
+
+# English aliases (snake_case)
+place_block = taruh_blok
+remove_block = hapus_blok
+move_x = gerak_x
+move_y = gerak_y
+move_z = gerak_z
+goto = ke_posisi
+set_color = warna
+
+# camelCase aliases (Blockly compatibility)
+buildPlaceBlock = taruh_blok
+buildRemoveBlock = hapus_blok
+buildMoveX = gerak_x
+buildMoveY = gerak_y
+buildMoveZ = gerak_z
+buildGoto = ke_posisi
+buildSetColor = warna
+
+# Color shortcuts
+def merah(): warna("#e74c3c")
+def oranye(): warna("#e67e22")
+def kuning(): warna("#f1c40f")
+def hijau(): warna("#2ecc71")
+def biru(): warna("#3498db")
+def ungu(): warna("#9b59b6")
+def putih(): warna("#ecf0f1")
+def coklat(): warna("#795548")
+def abu_abu(): warna("#95a5a6")
+
+# ========== KODE KAMU ==========
+
+__USER_CODE__
+
+# ========== OUTPUT ==========
+print("###BLOCKYKIDS_RESULT###")
+print(json.dumps({"actions": _actions}))
+`;
+
+export async function executePythonBuildingCode(userCode: string): Promise<BuildingExecutionResult> {
+    const fullCode = PYTHON_BUILDING_TEMPLATE.replace('__USER_CODE__', userCode);
+    try {
+        const result: ExecutionResult = await runPython(fullCode);
+        if (result.status === 'success' && result.output) {
+            const markerIndex = result.output.indexOf('###BLOCKYKIDS_RESULT###');
+            if (markerIndex !== -1) {
+                const jsonPart = result.output.substring(markerIndex + '###BLOCKYKIDS_RESULT###'.length).trim();
+                try {
+                    const parsed = JSON.parse(jsonPart);
+                    return { success: true, actions: parsed.actions || [] };
+                } catch {
+                    return { success: false, actions: [], error: 'Gagal parse hasil' };
+                }
+            }
+            return { success: true, actions: [] };
+        }
+        if (result.status === 'compile_error') {
+            return { success: false, actions: [], error: 'Syntax Error: ' + result.error };
+        }
+        return { success: false, actions: [], error: result.error || result.stderr || 'Error' };
+    } catch (error) {
+        return { success: false, actions: [], error: error instanceof Error ? error.message : 'Error' };
+    }
+}
+
+export function getBuildingPythonTemplate(levelId: number | string, levelName: string, instruction: string): string {
+    return `# Level ${levelId}: ${levelName}
+# ${instruction}
+
+# Fungsi yang tersedia:
+# - taruh_blok()     : Letakkan blok di posisi saat ini
+# - hapus_blok()     : Hapus blok di posisi saat ini  
+# - gerak_x(jarak)   : Gerak ke kiri/kanan
+# - gerak_y(jarak)   : Gerak ke atas/bawah (tinggi)
+# - gerak_z(jarak)   : Gerak ke depan/belakang
+# - ke_posisi(x,y,z) : Pindah ke posisi tertentu
+# - warna(kode)      : Pilih warna (contoh: "#e74c3c")
+#
+# Shortcut warna: merah(), hijau(), biru(), kuning(), ungu()
+
+# Tulis kode kamu di bawah ini:
+
+`;
+}
+
+export function countBuildingActions(code: string): number {
+    const patterns = [
+        /taruh_blok\s*\(\s*\)/g, /place_block\s*\(\s*\)/g,
+        /hapus_blok\s*\(\s*\)/g, /remove_block\s*\(\s*\)/g,
+        /gerak_x\s*\(/g, /move_x\s*\(/g,
+        /gerak_y\s*\(/g, /move_y\s*\(/g,
+        /gerak_z\s*\(/g, /move_z\s*\(/g,
+        /ke_posisi\s*\(/g, /goto\s*\(/g,
+        /warna\s*\(/g, /set_color\s*\(/g,
+    ];
+    let count = 0;
+    for (const pattern of patterns) {
+        const matches = code.match(pattern);
+        if (matches) count += matches.length;
+    }
+    const forLoops = code.match(/for\s+\w+\s+in\s+range\s*\(/g);
+    if (forLoops) count += forLoops.length;
+    return count;
 }

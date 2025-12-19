@@ -13,7 +13,7 @@ import { RobotLevel } from '@/types';
 import { executePythonRobotCode, RobotAction } from '@/services/codeExecutor';
 
 interface RobotPhaseProps {
-    onLevelComplete: (levelId: number) => void;
+    onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 

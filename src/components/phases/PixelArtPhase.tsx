@@ -13,7 +13,7 @@ import { PixelArtLevel } from '@/types';
 import { executePythonPixelCode, PixelAction } from '@/services/codeExecutor';
 
 interface PixelArtPhaseProps {
-    onLevelComplete: (levelId: number) => void;
+    onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 

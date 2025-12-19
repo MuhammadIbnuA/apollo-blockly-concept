@@ -54,6 +54,14 @@ export const PHASES: Record<PhaseId, Phase> = {
         color: '#e17055',
         order: 6,
     },
+    building: {
+        id: 'building',
+        name: 'Building Craft',
+        icon: '🏗️',
+        description: 'Bangun struktur 3D dengan kode',
+        color: '#00cec9',
+        order: 7,
+    },
 };
 
 export const PHASE_LIST = Object.values(PHASES).sort((a, b) => a.order - b.order);

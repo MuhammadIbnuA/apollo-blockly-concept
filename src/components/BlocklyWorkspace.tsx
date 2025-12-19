@@ -449,6 +449,101 @@ function defineCustomBlocks() {
         }
     };
 
+    // ===== BUILDING BLOCKS =====
+    Blockly.Blocks['build_place_block'] = {
+        init: function () {
+            this.appendDummyInput().appendField('🧱 Taruh Blok');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(180);
+            this.setTooltip('Letakkan blok di posisi saat ini');
+        }
+    };
+
+    Blockly.Blocks['build_remove_block'] = {
+        init: function () {
+            this.appendDummyInput().appendField('🗑️ Hapus Blok');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(180);
+            this.setTooltip('Hapus blok di posisi saat ini');
+        }
+    };
+
+    Blockly.Blocks['build_move_x'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('➡️ Gerak X')
+                .appendField(new Blockly.FieldNumber(1, -10, 10), 'DISTANCE');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(210);
+            this.setTooltip('Gerakkan kursor ke kiri/kanan');
+        }
+    };
+
+    Blockly.Blocks['build_move_y'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('⬆️ Gerak Y')
+                .appendField(new Blockly.FieldNumber(1, -10, 10), 'DISTANCE');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(210);
+            this.setTooltip('Gerakkan kursor ke atas/bawah (tinggi)');
+        }
+    };
+
+    Blockly.Blocks['build_move_z'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('↗️ Gerak Z')
+                .appendField(new Blockly.FieldNumber(1, -10, 10), 'DISTANCE');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(210);
+            this.setTooltip('Gerakkan kursor ke depan/belakang');
+        }
+    };
+
+    Blockly.Blocks['build_set_color'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('🎨 Warna')
+                .appendField(new Blockly.FieldDropdown([
+                    ['🔴 Merah', '#e74c3c'],
+                    ['🟠 Oranye', '#e67e22'],
+                    ['🟡 Kuning', '#f1c40f'],
+                    ['🟢 Hijau', '#2ecc71'],
+                    ['🔵 Biru', '#3498db'],
+                    ['🟣 Ungu', '#9b59b6'],
+                    ['⚪ Putih', '#ecf0f1'],
+                    ['🟤 Coklat', '#795548'],
+                    ['⬛ Abu-abu', '#95a5a6']
+                ]), 'COLOR');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(20);
+            this.setTooltip('Pilih warna blok');
+        }
+    };
+
+    Blockly.Blocks['build_goto'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('📍 Ke posisi X')
+                .appendField(new Blockly.FieldNumber(0, 0, 10), 'X')
+                .appendField('Y')
+                .appendField(new Blockly.FieldNumber(0, 0, 10), 'Y')
+                .appendField('Z')
+                .appendField(new Blockly.FieldNumber(0, 0, 10), 'Z');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(260);
+            this.setTooltip('Pindah ke posisi tertentu');
+        }
+    };
+
     // Register code generators
     registerCodeGenerators();
 }
@@ -512,5 +607,14 @@ function registerCodeGenerators() {
 
     javascriptGenerator.forBlock['music_play_note'] = (block: any) => `await musicPlayNote("${block.getFieldValue('NOTE')}");\n`;
     javascriptGenerator.forBlock['music_rest'] = (block: any) => `await musicRest(${block.getFieldValue('BEATS')});\n`;
+
+    // Building generators
+    javascriptGenerator.forBlock['build_place_block'] = () => 'buildPlaceBlock();\n';
+    javascriptGenerator.forBlock['build_remove_block'] = () => 'buildRemoveBlock();\n';
+    javascriptGenerator.forBlock['build_move_x'] = (block: any) => `buildMoveX(${block.getFieldValue('DISTANCE')});\n`;
+    javascriptGenerator.forBlock['build_move_y'] = (block: any) => `buildMoveY(${block.getFieldValue('DISTANCE')});\n`;
+    javascriptGenerator.forBlock['build_move_z'] = (block: any) => `buildMoveZ(${block.getFieldValue('DISTANCE')});\n`;
+    javascriptGenerator.forBlock['build_set_color'] = (block: any) => `buildSetColor("${block.getFieldValue('COLOR')}");\n`;
+    javascriptGenerator.forBlock['build_goto'] = (block: any) => `buildGoto(${block.getFieldValue('X')}, ${block.getFieldValue('Y')}, ${block.getFieldValue('Z')});\n`;
 }
 

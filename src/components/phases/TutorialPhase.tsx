@@ -6,21 +6,24 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { BaseLevel } from '@/types';
 import { Button } from '@/components/ui';
 import LevelList from '@/components/LevelList';
 import DualModeWorkspace, { WorkspaceMode } from '@/components/DualModeWorkspace';
+import { challengeService } from '@/services/challengeService';
 import {
     executePythonRobotCode,
     getTutorialPythonTemplate,
     countPythonActions,
     RobotAction
 } from '@/services/codeExecutor';
+import { CustomChallenge } from '@prisma/client';
 
 interface TutorialPhaseProps {
-    onLevelComplete: (levelId: number) => void;
+    onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+    initialLevel?: TutorialLevel;
 }
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -241,8 +244,8 @@ const DIRECTION_EMOJI: Record<Direction, string> = {
     right: '➡️',
 };
 
-export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPhaseProps) {
-    const [levels] = useState<TutorialLevel[]>(DEFAULT_LEVELS);
+export default function TutorialPhase({ onLevelComplete, showToast, initialLevel }: TutorialPhaseProps) {
+    const [levels, setLevels] = useState<TutorialLevel[]>(initialLevel ? [initialLevel] : DEFAULT_LEVELS);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
     const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('block');
@@ -257,6 +260,31 @@ export default function TutorialPhase({ onLevelComplete, showToast }: TutorialPh
     // Python output state
     const [pythonOutput, setPythonOutput] = useState<string>('');
     const [pythonError, setPythonError] = useState<string>('');
+
+    // Load custom levels on mount (only if not in single level mode)
+    useEffect(() => {
+        if (initialLevel) return;
+
+        const fetchCustomChallenges = async () => {
+            try {
+                const challenges = await challengeService.getAll('tutorial');
+                if (challenges.length > 0) {
+                    const customLevels = challenges.map(c => ({
+                        ...(c.config as unknown as TutorialLevel),
+                        id: c.id, // Use DB ID
+                        name: c.title,
+                        difficulty: c.difficulty as any,
+                        description: c.description || '',
+                    }));
+                    setLevels([...DEFAULT_LEVELS, ...customLevels]);
+                }
+            } catch (error) {
+                console.error('Failed to load custom challenges:', error);
+            }
+        };
+
+        fetchCustomChallenges();
+    }, []);
 
     const level = levels[currentLevel];
 

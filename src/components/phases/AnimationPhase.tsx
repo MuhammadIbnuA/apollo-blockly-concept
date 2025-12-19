@@ -13,7 +13,7 @@ import { AnimationLevel, Sprite } from '@/types';
 import { executePythonAnimationCode, AnimationAction } from '@/services/codeExecutor';
 
 interface AnimationPhaseProps {
-    onLevelComplete: (levelId: number) => void;
+    onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 

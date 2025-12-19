@@ -10,6 +10,7 @@ import { PHASES } from '@/data/phases';
 import { Button } from '@/components/ui';
 import { useAdminMode } from '@/hooks';
 import PhaseSelector from './PhaseSelector';
+import ChallengeConfigScreen from './admin/ChallengeConfigScreen';
 
 interface HeaderProps {
     currentPhase: PhaseId;
@@ -18,6 +19,7 @@ interface HeaderProps {
 
 export default function Header({ currentPhase, onPhaseChange }: HeaderProps) {
     const [showPhaseSelector, setShowPhaseSelector] = useState(false);
+    const [showChallengeConfig, setShowChallengeConfig] = useState(false);
     const { isAdmin, toggleAdmin } = useAdminMode();
     const phase = PHASES[currentPhase];
 
@@ -47,6 +49,18 @@ export default function Header({ currentPhase, onPhaseChange }: HeaderProps) {
 
                     {/* Actions */}
                     <div className="flex items-center gap-3">
+                        {/* Challenge Config - Admin Only */}
+                        {isAdmin && (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setShowChallengeConfig(true)}
+                                icon="⚙️"
+                            >
+                                Kelola Tantangan
+                            </Button>
+                        )}
+
                         {/* Admin Toggle */}
                         <button
                             onClick={toggleAdmin}
@@ -85,6 +99,12 @@ export default function Header({ currentPhase, onPhaseChange }: HeaderProps) {
                     setShowPhaseSelector(false);
                 }}
                 currentPhase={currentPhase}
+            />
+
+            {/* Challenge Config Modal */}
+            <ChallengeConfigScreen
+                isOpen={showChallengeConfig}
+                onClose={() => setShowChallengeConfig(false)}
             />
         </>
     );

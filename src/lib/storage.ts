@@ -17,7 +17,7 @@ const STORAGE_KEYS = {
 // ===================================
 export const getDefaultProgress = (): UserProgress => ({
     currentPhase: 'tutorial',
-    unlockedPhases: ['tutorial', 'robot', 'pixelart', 'animation', 'math', 'music'], // All unlocked for testing
+    unlockedPhases: ['tutorial', 'robot', 'pixelart', 'animation', 'math', 'music', 'building'], // All unlocked for testing
     completedLevels: {
         tutorial: [],
         robot: [],
@@ -25,6 +25,7 @@ export const getDefaultProgress = (): UserProgress => ({
         animation: [],
         math: [],
         music: [],
+        building: [],
     },
     isAdmin: true, // Default admin mode for teachers
 });
@@ -40,7 +41,7 @@ export const loadProgress = (): UserProgress => {
             return {
                 ...getDefaultProgress(),
                 ...parsed,
-                unlockedPhases: ['tutorial', 'robot', 'pixelart', 'animation', 'math', 'music'],
+                unlockedPhases: ['tutorial', 'robot', 'pixelart', 'animation', 'math', 'music', 'building'],
                 isAdmin: true,
             };
         }

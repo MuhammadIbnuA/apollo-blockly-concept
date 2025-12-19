@@ -13,7 +13,7 @@ import { MathLevel } from '@/types';
 import { runPython } from '@/services/judge0';
 
 interface MathPhaseProps {
-    onLevelComplete: (levelId: number) => void;
+    onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 

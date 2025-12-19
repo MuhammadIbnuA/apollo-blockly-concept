@@ -17,6 +17,7 @@ const PixelArtPhase = dynamic(() => import('@/components/phases/PixelArtPhase'),
 const AnimationPhase = dynamic(() => import('@/components/phases/AnimationPhase'), { ssr: false });
 const MathPhase = dynamic(() => import('@/components/phases/MathPhase'), { ssr: false });
 const MusicPhase = dynamic(() => import('@/components/phases/MusicPhase'), { ssr: false });
+const BuildingPhase = dynamic(() => import('@/components/phases/BuildingPhase'), { ssr: false });
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -49,7 +50,7 @@ export default function Home() {
     localStorage.setItem('blockykids_progress', JSON.stringify(progress));
   };
 
-  const handleLevelComplete = (levelId: number) => {
+  const handleLevelComplete = (levelId: number | string) => {
     console.log('Level completed:', levelId);
     showToast('🎉 Level selesai!', 'success');
   };
@@ -97,6 +98,8 @@ export default function Home() {
         return <MathPhase {...commonProps} />;
       case 'music':
         return <MusicPhase {...commonProps} />;
+      case 'building':
+        return <BuildingPhase {...commonProps} />;
       default:
         return <TutorialPhase {...commonProps} />;
     }

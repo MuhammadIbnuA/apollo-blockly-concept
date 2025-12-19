@@ -6,7 +6,7 @@
 // ===================================
 // Phase Types
 // ===================================
-export type PhaseId = 'tutorial' | 'robot' | 'pixelart' | 'animation' | 'math' | 'music';
+export type PhaseId = 'tutorial' | 'robot' | 'pixelart' | 'animation' | 'math' | 'music' | 'building';
 
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'free';
 
@@ -23,7 +23,7 @@ export interface Phase {
 // Level Types
 // ===================================
 export interface BaseLevel {
-    id: number;
+    id: number | string;
     name: string;
     difficulty: Difficulty;
     description: string;
@@ -98,6 +98,14 @@ export interface MusicGoal {
     minNotes?: number;
 }
 
+// Building Level
+export interface BuildingLevel extends BaseLevel {
+    gridSize: { width: number; height: number; depth: number };
+    targetStructure?: { x: number; y: number; z: number; color: string }[];
+    availableColors: string[];
+    requireBlockCount?: number;
+}
+
 // ===================================
 // Sprite Types
 // ===================================
@@ -130,7 +138,7 @@ export interface CustomSprite {
 export interface UserProgress {
     currentPhase: PhaseId;
     unlockedPhases: PhaseId[];
-    completedLevels: Record<PhaseId, number[]>;
+    completedLevels: Record<PhaseId, (number | string)[]>;
     isAdmin: boolean;
 }
 

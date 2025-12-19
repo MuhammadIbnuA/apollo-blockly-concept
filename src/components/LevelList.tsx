@@ -12,7 +12,7 @@ interface LevelListProps<T extends BaseLevel> {
     levels: T[];
     currentLevel: number;
     onSelect: (index: number) => void;
-    completedLevels?: number[];
+    completedLevels?: (number | string)[];
     showDifficulty?: boolean;
 }
 
@@ -76,18 +76,26 @@ export default function LevelList<T extends BaseLevel>({
                         {/* Level Number */}
                         <div
                             className={clsx(
-                                'w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold',
+                                'w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shrink-0',
                                 isCompleted
                                     ? 'bg-success text-white'
                                     : 'bg-gradient-to-r from-primary to-primary-light text-white'
                             )}
                         >
-                            {isCompleted ? '✓' : level.id}
+                            {/* Use 'C' for custom levels if ID is large, otherwise show ID */}
+                            {isCompleted ? '✓' : String(level.id).length > 3 ? 'C' : level.id}
                         </div>
 
                         {/* Level Info */}
                         <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{level.name}</div>
+                            <div className="flex items-center gap-2">
+                                <div className="font-medium truncate">{level.name}</div>
+                                {String(level.id).length > 3 && (
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-purple-600 rounded text-white font-bold">
+                                        CUSTOM
+                                    </span>
+                                )}
+                            </div>
                             {showDifficulty && (
                                 <div className={clsx('text-xs', getDifficultyColor(level.difficulty))}>
                                     {getDifficultyLabel(level.difficulty)}

@@ -13,7 +13,7 @@ import { MusicLevel } from '@/types';
 import { executePythonMusicCode, MusicAction } from '@/services/codeExecutor';
 
 interface MusicPhaseProps {
-    onLevelComplete: (levelId: number) => void;
+    onLevelComplete: (levelId: number | string) => void;
     showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void;
 }
 

@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model challenges {
+  id               String             @id @db.Uuid
+  title            String
+  status           ChallengeStatus    @default(DRAFT)
+  created_by       String             @db.Uuid
+  created_at       DateTime           @default(now())
+  users            users              @relation(fields: [created_by], references: [id])
+  questions        questions[]
+  student_attempts student_attempts[]
+}
+
+model groups {
+  id         String     @id @db.Uuid
+  teacher_id String     @db.Uuid
+  name       String
+  created_at DateTime   @default(now())
+  users      users      @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  students   students[]
+}
+
+model questions {
+  id             Int        @id @default(autoincrement())
+  challenge_id   String     @db.Uuid
+  content_text   String
+  options        Json
+  correct_answer String     @db.VarChar(1)
+  order          Int
+  challenges     challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+}
+
+model student_attempts {
+  id           String     @id @db.Uuid
+  student_id   String     @db.Uuid
+  challenge_id String     @db.Uuid
+  score        Int
+  completed_at DateTime   @default(now())
+  challenges   challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  students     students   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+}
+
+model students {
+  id               String             @id @db.Uuid
+  group_id         String             @db.Uuid
+  name             String
+  login_code       String             @unique @db.VarChar(6)
+  created_at       DateTime           @default(now())
+  student_attempts student_attempts[]
+  groups           groups             @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@index([login_code])
+}
+
+model users {
+  id            String       @id @db.Uuid
+  email         String       @unique
+  password_hash String
+  name          String
+  role          UserRole
+  created_at    DateTime     @default(now())
+  challenges    challenges[]
+  groups        groups[]
+}
+
+enum ChallengeStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+}
+
+model CustomChallenge {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  phase       String
+  difficulty  String
+  config      Json
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("custom_challenges")
+}
