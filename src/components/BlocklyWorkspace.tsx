@@ -138,7 +138,7 @@ export default function BlocklyWorkspace({
     }
 
     return (
-        <div className="blockly-wrapper" style={{ minHeight: '500px' }}>
+        <div className="blockly-wrapper h-full w-full" style={{ minHeight: '500px' }}>
             <div ref={containerRef} className="w-full h-full" />
         </div>
     );
