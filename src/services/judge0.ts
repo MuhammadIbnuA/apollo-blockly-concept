@@ -7,6 +7,11 @@
 // Uses self-hosted Judge0 by default, can override with NEXT_PUBLIC_JUDGE0_URL env var
 const JUDGE0_API_URL = process.env.NEXT_PUBLIC_JUDGE0_URL || 'http://129.212.236.32:2358';
 
+// Check if we're running in production/browser environment
+// Use API proxy in production to avoid CORS issues
+const isProduction = typeof window !== 'undefined' && process.env.NODE_ENV === 'production';
+const USE_PROXY = typeof window !== 'undefined'; // Always use proxy in browser to avoid CORS
+
 // Language IDs in Judge0
 export const LANGUAGE_IDS = {
     python3: 71,
@@ -134,18 +139,36 @@ export async function runCode(
     stdin?: string
 ): Promise<ExecutionResult> {
     try {
-        // Use synchronous wait=true mode for compatibility with local Python executor
-        const response = await fetch(`${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=true`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                source_code: btoa(unescape(encodeURIComponent(code))),
-                language_id: LANGUAGE_IDS[language],
-                stdin: stdin ? btoa(unescape(encodeURIComponent(stdin))) : undefined,
-            }),
-        });
+        const submissionData = {
+            source_code: btoa(unescape(encodeURIComponent(code))),
+            language_id: LANGUAGE_IDS[language],
+            stdin: stdin ? btoa(unescape(encodeURIComponent(stdin))) : undefined,
+        };
+
+        let response: Response;
+
+        if (USE_PROXY) {
+            // Use API proxy to avoid CORS issues in browser
+            response = await fetch('/api/judge0', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    pathname: '/submissions?base64_encoded=true&wait=true',
+                    ...submissionData,
+                }),
+            });
+        } else {
+            // Direct call (server-side)
+            response = await fetch(`${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=true`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(submissionData),
+            });
+        }
 
         if (!response.ok) {
             throw new Error(`Judge0 submission failed: ${response.statusText}`);
@@ -217,10 +240,21 @@ export async function runCode(
  */
 export async function checkJudge0Health(): Promise<boolean> {
     try {
-        const response = await fetch(`${JUDGE0_API_URL}/about`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(5000),
-        });
+        let response: Response;
+
+        if (USE_PROXY) {
+            // Use API proxy to avoid CORS issues in browser
+            response = await fetch('/api/judge0?pathname=/about', {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000),
+            });
+        } else {
+            // Direct call (server-side)
+            response = await fetch(`${JUDGE0_API_URL}/about`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000),
+            });
+        }
         return response.ok;
     } catch {
         return false;
