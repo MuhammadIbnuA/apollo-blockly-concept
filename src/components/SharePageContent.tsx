@@ -6,6 +6,11 @@ import Link from 'next/link';
 
 const TutorialPhase = dynamic(() => import('@/components/phases/TutorialPhase'), { ssr: false });
 const BuildingPhase = dynamic(() => import('@/components/phases/BuildingPhase'), { ssr: false });
+const PixelArtPhase = dynamic(() => import('@/components/phases/PixelArtPhase'), { ssr: false });
+const AnimationPhase = dynamic(() => import('@/components/phases/AnimationPhase'), { ssr: false });
+const MathPhase = dynamic(() => import('@/components/phases/MathPhase'), { ssr: false });
+const MusicPhase = dynamic(() => import('@/components/phases/MusicPhase'), { ssr: false });
+const RobotPhase = dynamic(() => import('@/components/phases/RobotPhase'), { ssr: false });
 
 interface SharePageContentProps {
     phase: string;
@@ -52,10 +57,20 @@ export default function SharePageContent({ phase, levelData, challengeTitle }: S
             return <TutorialPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
         case 'building':
             return <BuildingPhase onLevelComplete={handleLevelComplete} showToast={showToast} initialLevel={levelData} />;
+        case 'pixel-art':
+            return <PixelArtPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+        case 'animation':
+            return <AnimationPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+        case 'math':
+            return <MathPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+        case 'music':
+            return <MusicPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
+        case 'robot':
+            return <RobotPhase onLevelComplete={handleLevelComplete} showToast={showToast} />;
         default:
             return (
                 <div className="text-center py-20">
-                    <p className="text-xl text-red-400">Tipe tantangan ini belum didukung untuk sharing.</p>
+                    <p className="text-xl text-red-400">Tipe tantangan &quot;{phase}&quot; belum didukung untuk sharing.</p>
                     <Link href="/" className="text-blue-400 hover:underline mt-4 block">Kembali</Link>
                 </div>
             );
