@@ -605,3 +605,316 @@ export function countBuildingActions(code: string): number {
     if (forLoops) count += forLoops.length;
     return count;
 }
+
+// ========== ALCHEMIST PHASE (SORTING) ==========
+
+export interface AlchemistAction {
+    type: 'swap';
+    from: number;
+    to: number;
+}
+
+export interface AlchemistExecutionResult {
+    success: boolean;
+    actions: AlchemistAction[];
+    finalArray: number[];
+    swapCount: number;
+    error?: string;
+}
+
+const PYTHON_ALCHEMIST_TEMPLATE = `# BlockyKids Alchemist API - Sortir Ramuan
+import json
+
+_actions = []
+_swap_count = 0
+
+# Array ramuan awal
+ramuan = __POTIONS__
+
+def tukar(i, j):
+    """Tukar posisi ramuan ke-i dengan ramuan ke-j"""
+    global _swap_count
+    if 0 <= i < len(ramuan) and 0 <= j < len(ramuan):
+        temp = ramuan[i]
+        ramuan[i] = ramuan[j]
+        ramuan[j] = temp
+        _swap_count += 1
+        _actions.append({"type": "swap", "from": i, "to": j})
+        print(f"SWAP:{i},{j}")
+    else:
+        print(f"Error: Index {i} atau {j} di luar batas!")
+
+def ambil(i):
+    """Ambil nilai ramuan di posisi i"""
+    if 0 <= i < len(ramuan):
+        return ramuan[i]
+    return None
+
+def panjang():
+    """Dapatkan jumlah ramuan"""
+    return len(ramuan)
+
+def lihat():
+    """Lihat array ramuan saat ini"""
+    print(f"Ramuan: {ramuan}")
+
+# English aliases
+swap = tukar
+get = ambil
+length = panjang
+view = lihat
+potions = ramuan
+
+# Blockly compatibility
+alchemistSwap = tukar
+alchemistGet = ambil
+alchemistLength = panjang
+
+# ========== KODE KAMU ==========
+
+__USER_CODE__
+
+# ========== OUTPUT ==========
+print("###BLOCKYKIDS_RESULT###")
+print(json.dumps({"actions": _actions, "finalArray": ramuan, "swapCount": _swap_count}))
+`;
+
+export async function executePythonAlchemistCode(userCode: string, initialPotions: number[]): Promise<AlchemistExecutionResult> {
+    const fullCode = PYTHON_ALCHEMIST_TEMPLATE
+        .replace('__POTIONS__', JSON.stringify(initialPotions))
+        .replace('__USER_CODE__', userCode);
+
+    try {
+        const result: ExecutionResult = await runPython(fullCode);
+        if (result.status === 'success' && result.output) {
+            const markerIndex = result.output.indexOf('###BLOCKYKIDS_RESULT###');
+            if (markerIndex !== -1) {
+                const jsonPart = result.output.substring(markerIndex + '###BLOCKYKIDS_RESULT###'.length).trim();
+                try {
+                    const parsed = JSON.parse(jsonPart);
+                    return {
+                        success: true,
+                        actions: parsed.actions || [],
+                        finalArray: parsed.finalArray || [],
+                        swapCount: parsed.swapCount || 0,
+                    };
+                } catch {
+                    return { success: false, actions: [], finalArray: [], swapCount: 0, error: 'Gagal parse hasil' };
+                }
+            }
+            return { success: true, actions: [], finalArray: initialPotions, swapCount: 0 };
+        }
+        if (result.status === 'compile_error') {
+            return { success: false, actions: [], finalArray: [], swapCount: 0, error: 'Syntax Error: ' + result.error };
+        }
+        return { success: false, actions: [], finalArray: [], swapCount: 0, error: result.error || result.stderr || 'Error' };
+    } catch (error) {
+        return { success: false, actions: [], finalArray: [], swapCount: 0, error: error instanceof Error ? error.message : 'Error' };
+    }
+}
+
+export function getAlchemistPythonTemplate(levelId: number | string, levelName: string, potions: number[]): string {
+    return `# Level ${levelId}: ${levelName}
+# Sortir ramuan dari kecil ke besar!
+
+# Array ramuan: ${JSON.stringify(potions)}
+
+# Fungsi yang tersedia:
+# - tukar(i, j)  : Tukar posisi ramuan ke-i dan ke-j
+# - ambil(i)     : Ambil nilai ramuan di posisi i
+# - panjang()    : Dapatkan jumlah ramuan
+# - lihat()      : Tampilkan array saat ini
+
+# Tulis kode sorting kamu di bawah ini:
+
+`;
+}
+
+// ========== COMBAT PHASE (OOP STRATEGY) ==========
+
+export interface CombatAction {
+    type: 'select_target' | 'attack' | 'move';
+    targetId?: string;
+    x?: number;
+    y?: number;
+}
+
+export interface CombatExecutionResult {
+    success: boolean;
+    selectedTarget: string | null;
+    actions: CombatAction[];
+    testResult?: 'pass' | 'fail';
+    testMessage?: string;
+    error?: string;
+}
+
+export interface CombatUnitData {
+    id: string;
+    name: string;
+    x: number;
+    y: number;
+    hp: number;
+    attack: number;
+    range: number;
+}
+
+const PYTHON_COMBAT_TEMPLATE = `# BlockyKids Combat API - Strategi Tempur
+import json
+import math
+
+_selected_target = None
+_actions = []
+
+class Unit:
+    """Kelas dasar untuk unit dalam arena"""
+    def __init__(self, id, name, x, y, hp, attack, attack_range):
+        self.id = id
+        self.name = name
+        self.x = x
+        self.y = y
+        self.hp = hp
+        self.attack = attack
+        self.range = attack_range
+    
+    def jarak_ke(self, unit_lain):
+        """Hitung jarak ke unit lain"""
+        return math.sqrt((self.x - unit_lain.x)**2 + (self.y - unit_lain.y)**2)
+    
+    def dalam_jangkauan(self, unit_lain):
+        """Cek apakah unit lain dalam jangkauan serang"""
+        return self.jarak_ke(unit_lain) <= self.range
+    
+    # English aliases
+    distance_to = jarak_ke
+    in_range = dalam_jangkauan
+
+class Pahlawan(Unit):
+    """Kelas untuk hero/pahlawan"""
+    def __init__(self, x, y, hp=100, attack=20, attack_range=3):
+        super().__init__("hero", "Pahlawan", x, y, hp, attack, attack_range)
+    
+    def serang(self, target):
+        """Serang target musuh"""
+        global _selected_target
+        _selected_target = target.id
+        _actions.append({"type": "attack", "targetId": target.id})
+        print(f"TARGET:{target.id}")
+        return target.id
+
+class Musuh(Unit):
+    """Kelas untuk musuh"""
+    def __init__(self, id, name, x, y, hp=50, attack=10, attack_range=2):
+        super().__init__(id, name, x, y, hp, attack, attack_range)
+
+# English aliases
+Hero = Pahlawan
+Enemy = Musuh
+
+# Setup arena
+pahlawan = Pahlawan(__HERO_X__, __HERO_Y__, __HERO_HP__, __HERO_ATTACK__, __HERO_RANGE__)
+hero = pahlawan
+
+daftar_musuh = [
+__ENEMIES__
+]
+enemies = daftar_musuh
+
+def pilih_target(musuh):
+    """Pilih musuh sebagai target serangan"""
+    global _selected_target
+    _selected_target = musuh.id
+    _actions.append({"type": "select_target", "targetId": musuh.id})
+    return musuh
+
+def serang_target(target):
+    """Serang target yang dipilih"""
+    return pahlawan.serang(target)
+
+# English aliases
+select_target = pilih_target
+attack_target = serang_target
+
+# Blockly compatibility
+combatSelectTarget = pilih_target
+combatAttack = serang_target
+
+# ========== KODE KAMU ==========
+
+__USER_CODE__
+
+# ========== OUTPUT ==========
+print("###BLOCKYKIDS_RESULT###")
+print(json.dumps({"selectedTarget": _selected_target, "actions": _actions}))
+`;
+
+export async function executePythonCombatCode(
+    userCode: string,
+    hero: CombatUnitData,
+    enemies: CombatUnitData[]
+): Promise<CombatExecutionResult> {
+    const enemiesCode = enemies.map(e =>
+        `    Musuh("${e.id}", "${e.name}", ${e.x}, ${e.y}, ${e.hp}, ${e.attack}, ${e.range}),`
+    ).join('\n');
+
+    const fullCode = PYTHON_COMBAT_TEMPLATE
+        .replace('__HERO_X__', String(hero.x))
+        .replace('__HERO_Y__', String(hero.y))
+        .replace('__HERO_HP__', String(hero.hp))
+        .replace('__HERO_ATTACK__', String(hero.attack))
+        .replace('__HERO_RANGE__', String(hero.range))
+        .replace('__ENEMIES__', enemiesCode)
+        .replace('__USER_CODE__', userCode);
+
+    try {
+        const result: ExecutionResult = await runPython(fullCode);
+        if (result.status === 'success' && result.output) {
+            const markerIndex = result.output.indexOf('###BLOCKYKIDS_RESULT###');
+            if (markerIndex !== -1) {
+                const jsonPart = result.output.substring(markerIndex + '###BLOCKYKIDS_RESULT###'.length).trim();
+                try {
+                    const parsed = JSON.parse(jsonPart);
+                    return {
+                        success: true,
+                        selectedTarget: parsed.selectedTarget || null,
+                        actions: parsed.actions || [],
+                    };
+                } catch {
+                    return { success: false, selectedTarget: null, actions: [], error: 'Gagal parse hasil' };
+                }
+            }
+            return { success: true, selectedTarget: null, actions: [] };
+        }
+        if (result.status === 'compile_error') {
+            return { success: false, selectedTarget: null, actions: [], error: 'Syntax Error: ' + result.error };
+        }
+        return { success: false, selectedTarget: null, actions: [], error: result.error || result.stderr || 'Error' };
+    } catch (error) {
+        return { success: false, selectedTarget: null, actions: [], error: error instanceof Error ? error.message : 'Error' };
+    }
+}
+
+export function getCombatPythonTemplate(levelId: number | string, levelName: string, instruction: string): string {
+    return `# Level ${levelId}: ${levelName}
+# ${instruction}
+
+# Kelas yang tersedia:
+# - Pahlawan: hero kamu dengan x, y, hp, attack, range
+# - Musuh: musuh dengan id, name, x, y, hp, attack, range
+
+# Variabel yang tersedia:
+# - pahlawan (atau hero): unit hero kamu
+# - daftar_musuh (atau enemies): list semua musuh
+
+# Method unit:
+# - jarak_ke(unit): hitung jarak ke unit lain
+# - dalam_jangkauan(unit): cek apakah unit dalam range
+
+# Fungsi:
+# - pilih_target(musuh): pilih musuh sebagai target
+# - serang_target(musuh): serang musuh
+
+# Tulis strategi kamu di bawah ini:
+
+`;
+}
+

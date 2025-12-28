@@ -545,6 +545,207 @@ function defineCustomBlocks() {
         }
     };
 
+    // ===== ALCHEMIST BLOCKS =====
+    Blockly.Blocks['alchemist_swap'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('🔄 Tukar posisi')
+                .appendField(new Blockly.FieldNumber(0, 0, 10), 'INDEX_A')
+                .appendField('dengan')
+                .appendField(new Blockly.FieldNumber(1, 0, 10), 'INDEX_B');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(120);
+            this.setTooltip('Tukar posisi dua ramuan');
+        }
+    };
+
+    Blockly.Blocks['alchemist_get'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('📦 Ambil ramuan ke-')
+                .appendField(new Blockly.FieldNumber(0, 0, 10), 'INDEX');
+            this.setOutput(true, 'Number');
+            this.setColour(120);
+            this.setTooltip('Ambil nilai ramuan di posisi tertentu');
+        }
+    };
+
+    Blockly.Blocks['alchemist_length'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('📏 Jumlah ramuan');
+            this.setOutput(true, 'Number');
+            this.setColour(120);
+            this.setTooltip('Dapatkan jumlah total ramuan');
+        }
+    };
+
+    Blockly.Blocks['alchemist_view'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('👁️ Lihat array ramuan');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(120);
+            this.setTooltip('Tampilkan array ramuan saat ini');
+        }
+    };
+
+    Blockly.Blocks['for_loop'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('🔁 Untuk i dari 0 sampai')
+                .appendField(new Blockly.FieldNumber(5, 1, 100), 'END');
+            this.appendStatementInput('DO').appendField('lakukan:');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(290);
+        }
+    };
+
+    Blockly.Blocks['for_loop_nested'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('🔁 Untuk j dari 0 sampai')
+                .appendField(new Blockly.FieldNumber(5, 1, 100), 'END');
+            this.appendStatementInput('DO').appendField('lakukan:');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(290);
+        }
+    };
+
+    Blockly.Blocks['if_compare'] = {
+        init: function () {
+            this.appendValueInput('A').setCheck('Number');
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ['>', '>'],
+                    ['<', '<'],
+                    ['==', '=='],
+                    ['>=', '>='],
+                    ['<=', '<='],
+                    ['!=', '!=']
+                ]), 'OP');
+            this.appendValueInput('B').setCheck('Number');
+            this.appendStatementInput('DO').appendField('maka:');
+            this.setInputsInline(true);
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(210);
+        }
+    };
+
+    Blockly.Blocks['compare_values'] = {
+        init: function () {
+            this.appendValueInput('A').setCheck('Number');
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ['>', '>'],
+                    ['<', '<'],
+                    ['==', '=='],
+                    ['>=', '>='],
+                    ['<=', '<='],
+                    ['!=', '!=']
+                ]), 'OP');
+            this.appendValueInput('B').setCheck('Number');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Boolean');
+            this.setColour(210);
+        }
+    };
+
+    Blockly.Blocks['variables'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('📦 Variabel')
+                .appendField(new Blockly.FieldDropdown([
+                    ['i', 'i'],
+                    ['j', 'j'],
+                    ['min', 'min'],
+                    ['temp', 'temp']
+                ]), 'VAR');
+            this.setOutput(true, 'Number');
+            this.setColour(330);
+        }
+    };
+
+    // ===== COMBAT BLOCKS =====
+    Blockly.Blocks['combat_select_target'] = {
+        init: function () {
+            this.appendValueInput('ENEMY')
+                .appendField('🎯 Pilih target');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(0);
+            this.setTooltip('Pilih musuh sebagai target');
+        }
+    };
+
+    Blockly.Blocks['combat_attack'] = {
+        init: function () {
+            this.appendValueInput('TARGET')
+                .appendField('⚔️ Serang');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(0);
+            this.setTooltip('Serang target');
+        }
+    };
+
+    Blockly.Blocks['combat_distance'] = {
+        init: function () {
+            this.appendValueInput('ENEMY')
+                .appendField('📏 Jarak ke');
+            this.setOutput(true, 'Number');
+            this.setColour(200);
+            this.setTooltip('Hitung jarak ke musuh');
+        }
+    };
+
+    Blockly.Blocks['combat_in_range'] = {
+        init: function () {
+            this.appendValueInput('ENEMY')
+                .appendField('🎯 Dalam jangkauan?');
+            this.setOutput(true, 'Boolean');
+            this.setColour(200);
+            this.setTooltip('Cek apakah musuh dalam jangkauan');
+        }
+    };
+
+    Blockly.Blocks['combat_get_hp'] = {
+        init: function () {
+            this.appendValueInput('UNIT')
+                .appendField('❤️ HP');
+            this.setOutput(true, 'Number');
+            this.setColour(340);
+            this.setTooltip('Lihat HP unit');
+        }
+    };
+
+    Blockly.Blocks['combat_get_position'] = {
+        init: function () {
+            this.appendValueInput('UNIT')
+                .appendField('📍 Posisi X');
+            this.setOutput(true, 'Number');
+            this.setColour(340);
+            this.setTooltip('Lihat posisi X unit');
+        }
+    };
+
+    Blockly.Blocks['for_each_enemy'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('👹 Untuk setiap musuh');
+            this.appendStatementInput('DO').appendField('lakukan:');
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(290);
+            this.setTooltip('Loop melalui semua musuh');
+        }
+    };
+
     // Register code generators
     registerCodeGenerators();
 }
@@ -617,5 +818,79 @@ function registerCodeGenerators() {
     javascriptGenerator.forBlock['build_move_z'] = (block: any) => `buildMoveZ(${block.getFieldValue('DISTANCE')});\n`;
     javascriptGenerator.forBlock['build_set_color'] = (block: any) => `buildSetColor("${block.getFieldValue('COLOR')}");\n`;
     javascriptGenerator.forBlock['build_goto'] = (block: any) => `buildGoto(${block.getFieldValue('X')}, ${block.getFieldValue('Y')}, ${block.getFieldValue('Z')});\n`;
+
+    // Alchemist generators
+    javascriptGenerator.forBlock['alchemist_swap'] = (block: any) => `await alchemistSwap(${block.getFieldValue('INDEX_A')}, ${block.getFieldValue('INDEX_B')});\n`;
+    javascriptGenerator.forBlock['alchemist_get'] = (block: any) => [`alchemistGet(${block.getFieldValue('INDEX')})`, Order.FUNCTION_CALL];
+    javascriptGenerator.forBlock['alchemist_length'] = () => ['alchemistLength()', Order.FUNCTION_CALL];
+    javascriptGenerator.forBlock['alchemist_view'] = () => 'alchemistView();\n';
+
+    javascriptGenerator.forBlock['for_loop'] = (block: any) => {
+        const end = block.getFieldValue('END');
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `for (let i = 0; i < ${end}; i++) {\n${branch}}\n`;
+    };
+
+    javascriptGenerator.forBlock['for_loop_nested'] = (block: any) => {
+        const end = block.getFieldValue('END');
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `for (let j = 0; j < ${end}; j++) {\n${branch}}\n`;
+    };
+
+    javascriptGenerator.forBlock['if_compare'] = (block: any) => {
+        const a = javascriptGenerator.valueToCode(block, 'A', Order.RELATIONAL) || '0';
+        const op = block.getFieldValue('OP');
+        const b = javascriptGenerator.valueToCode(block, 'B', Order.RELATIONAL) || '0';
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `if (${a} ${op} ${b}) {\n${branch}}\n`;
+    };
+
+    javascriptGenerator.forBlock['compare_values'] = (block: any) => {
+        const a = javascriptGenerator.valueToCode(block, 'A', Order.RELATIONAL) || '0';
+        const op = block.getFieldValue('OP');
+        const b = javascriptGenerator.valueToCode(block, 'B', Order.RELATIONAL) || '0';
+        return [`(${a} ${op} ${b})`, Order.RELATIONAL];
+    };
+
+    javascriptGenerator.forBlock['variables'] = (block: any) => {
+        const varName = block.getFieldValue('VAR');
+        return [varName, Order.ATOMIC];
+    };
+
+    // Combat generators
+    javascriptGenerator.forBlock['combat_select_target'] = (block: any) => {
+        const enemy = javascriptGenerator.valueToCode(block, 'ENEMY', Order.NONE) || 'null';
+        return `combatSelectTarget(${enemy});\n`;
+    };
+
+    javascriptGenerator.forBlock['combat_attack'] = (block: any) => {
+        const target = javascriptGenerator.valueToCode(block, 'TARGET', Order.NONE) || 'null';
+        return `combatAttack(${target});\n`;
+    };
+
+    javascriptGenerator.forBlock['combat_distance'] = (block: any) => {
+        const enemy = javascriptGenerator.valueToCode(block, 'ENEMY', Order.NONE) || 'null';
+        return [`combatDistance(hero, ${enemy})`, Order.FUNCTION_CALL];
+    };
+
+    javascriptGenerator.forBlock['combat_in_range'] = (block: any) => {
+        const enemy = javascriptGenerator.valueToCode(block, 'ENEMY', Order.NONE) || 'null';
+        return [`combatInRange(hero, ${enemy})`, Order.FUNCTION_CALL];
+    };
+
+    javascriptGenerator.forBlock['combat_get_hp'] = (block: any) => {
+        const unit = javascriptGenerator.valueToCode(block, 'UNIT', Order.NONE) || 'null';
+        return [`${unit}.hp`, Order.MEMBER];
+    };
+
+    javascriptGenerator.forBlock['combat_get_position'] = (block: any) => {
+        const unit = javascriptGenerator.valueToCode(block, 'UNIT', Order.NONE) || 'null';
+        return [`${unit}.x`, Order.MEMBER];
+    };
+
+    javascriptGenerator.forBlock['for_each_enemy'] = (block: any) => {
+        const branch = javascriptGenerator.statementToCode(block, 'DO');
+        return `for (const enemy of enemies) {\n${branch}}\n`;
+    };
 }
 

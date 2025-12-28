@@ -18,6 +18,8 @@ const AnimationPhase = dynamic(() => import('@/components/phases/AnimationPhase'
 const MathPhase = dynamic(() => import('@/components/phases/MathPhase'), { ssr: false });
 const MusicPhase = dynamic(() => import('@/components/phases/MusicPhase'), { ssr: false });
 const BuildingPhase = dynamic(() => import('@/components/phases/BuildingPhase'), { ssr: false });
+const AlchemistPhase = dynamic(() => import('@/components/phases/AlchemistPhase'), { ssr: false });
+const CombatPhase = dynamic(() => import('@/components/phases/CombatPhase'), { ssr: false });
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -100,6 +102,10 @@ export default function Home() {
         return <MusicPhase {...commonProps} />;
       case 'building':
         return <BuildingPhase {...commonProps} />;
+      case 'alchemist':
+        return <AlchemistPhase {...commonProps} />;
+      case 'combat':
+        return <CombatPhase {...commonProps} />;
       default:
         return <TutorialPhase {...commonProps} />;
     }

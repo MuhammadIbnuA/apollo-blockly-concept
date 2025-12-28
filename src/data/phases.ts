@@ -62,6 +62,22 @@ export const PHASES: Record<PhaseId, Phase> = {
         color: '#00cec9',
         order: 7,
     },
+    alchemist: {
+        id: 'alchemist',
+        name: 'Data Alchemist',
+        icon: '🧪',
+        description: 'Sortir ramuan dengan algoritma',
+        color: '#00b894',
+        order: 8,
+    },
+    combat: {
+        id: 'combat',
+        name: 'Code Combat',
+        icon: '⚔️',
+        description: 'Strategi tempur dengan OOP',
+        color: '#d63031',
+        order: 9,
+    },
 };
 
 export const PHASE_LIST = Object.values(PHASES).sort((a, b) => a.order - b.order);
